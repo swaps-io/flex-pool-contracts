@@ -2,8 +2,12 @@
   "name": "flex-pool-contracts",
   "packageManager": "yarn@4.9.1",
   "scripts": {
-    "b": "yarn hardhat compile",
-    "t": "yarn hardhat test"
+    "build": "yarn hardhat compile",
+    "b": "yarn build",
+    "test": "yarn hardhat test",
+    "t": "yarn test",
+    "lint": "yarn solhint --noPoster 'contracts/**/*.sol'",
+    "l": "yarn lint"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.3.0"
@@ -23,6 +27,7 @@
     "hardhat": "2.24.0",
     "hardhat-contract-sizer": "2.10.0",
     "hardhat-gas-reporter": "1.0.10",
+    "solhint": "5.1.0",
     "solidity-coverage": "0.8.16",
     "ts-node": "10.9.2",
     "typescript": "5.8.3",

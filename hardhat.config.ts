@@ -19,7 +19,7 @@ const config: HardhatUserConfig = {
     runOnCompile: true,
     strict: true,
     only: [
-      'contracts/FlexPool.sol',
+      'contracts/pool/FlexPool.sol',
     ],
   },
 };

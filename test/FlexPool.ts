@@ -7,7 +7,17 @@ describe('FlexPool', function () {
     const publicClient = await hre.viem.getPublicClient();
     const [walletClient] = await hre.viem.getWalletClients();
 
-    const pool = await hre.viem.deployContract('FlexPool');
+    const asset = await hre.viem.deployContract('TestToken', [
+      'Test Token', // name
+      'TT', // symbol
+      18, // decimals
+    ]);
+
+    const pool = await hre.viem.deployContract('FlexPool', [
+      asset.address, // asset
+      'Pool Test Token', // name
+      'PTT', // symbol
+    ]);
 
     return {
       publicClient,

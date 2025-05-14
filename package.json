@@ -6,7 +6,7 @@
     "b": "yarn build",
     "test": "yarn hardhat test",
     "t": "yarn test",
-    "lint": "yarn solhint --noPoster 'contracts/**/*.sol'",
+    "lint": "yarn solhint --noPoster --max-warnings 0 'contracts/**/*.sol'",
     "l": "yarn lint"
   },
   "dependencies": {
@@ -26,7 +26,7 @@
     "chai": "4.5.0",
     "hardhat": "2.24.0",
     "hardhat-contract-sizer": "2.10.0",
-    "hardhat-gas-reporter": "1.0.10",
+    "hardhat-gas-reporter": "2.2.3",
     "solhint": "5.1.0",
     "solidity-coverage": "0.8.16",
     "ts-node": "10.9.2",

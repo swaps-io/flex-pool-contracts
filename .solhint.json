@@ -1,8 +1,16 @@
 {
   "extends": "solhint:recommended",
+
   "rules": {
     "func-visibility": ["warn", { "ignoreConstructors": true }],
-    "immutable-vars-naming": "off",
+    "immutable-vars-naming": ["warn", { "immutablesAsConstants": false }],
+    "comprehensive-interface": "warn",
+    "interface-starts-with-i": "warn",
+    "code-complexity": ["warn", 7],
+    "max-line-length": ["warn", 120],
+    "gas-calldata-parameters": "warn",
+    "gas-struct-packing": "warn",
+
     "no-empty-blocks": "off"
   }
 }

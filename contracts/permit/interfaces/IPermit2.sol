@@ -1,8 +1,6 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity ^0.8.26;
-
-address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
 struct TokenPermissions {
     address token;

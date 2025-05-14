@@ -2,6 +2,9 @@ node_modules
 .yarn
 .env
 
+.DS_Store
+__notes__
+
 # Hardhat files
 /cache
 /artifacts

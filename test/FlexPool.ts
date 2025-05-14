@@ -1,6 +1,7 @@
 import { loadFixture, } from '@nomicfoundation/hardhat-toolbox-viem/network-helpers';
 import hre from 'hardhat';
 import { expect } from 'chai';
+import { zeroAddress } from 'viem';
 
 describe('FlexPool', function () {
   async function deployFixture() {
@@ -17,6 +18,10 @@ describe('FlexPool', function () {
       asset.address, // asset
       'Pool Test Token', // name
       'PTT', // symbol
+      zeroAddress, // obligor (TODO)
+      zeroAddress, // tuner (TODO)
+      zeroAddress, // verifier (TODO)
+      zeroAddress, // pools (TODO)
     ]);
 
     return {

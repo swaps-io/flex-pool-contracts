@@ -32,6 +32,8 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
     error SameFunctionPause(uint8 index, bool pause);
     error FunctionPaused(uint8 index);
 
+    function decimalsOffset() external view returns (uint8);
+
     function tuner() external view returns (ITuner);
 
     function verifier() external view returns (IEventVerifier);

@@ -17,6 +17,7 @@ import {BorrowHashLib} from "./libraries/BorrowHashLib.sol";
 contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2Step, Multicall {
     bytes32 private constant OBLIGATE_EVENT_SIGNATURE = keccak256("Obligate(bytes32)");
 
+    uint8 public immutable override decimalsOffset;
     ITuner public immutable override tuner;
     IEventVerifier public immutable override verifier;
 
@@ -38,6 +39,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         IERC20 asset_,
         string memory name_,
         string memory symbol_,
+        uint8 decimalsOffset_,
         ITuner tuner_,
         IEventVerifier verifier_,
         address initialOwner_
@@ -48,6 +50,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         AssetPermitter(asset_)
         Ownable(initialOwner_)
     {
+        decimalsOffset = decimalsOffset_;
         tuner = tuner_;
         verifier = verifier_;
     }
@@ -192,6 +195,12 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         require(pause_ != (bits & mask != 0), SameFunctionPause(index_, pause_));
         _functionPauseBits = pause_ ? bits | mask : bits & ~mask;
         emit FunctionPauseUpdate(index_, pause_);
+    }
+
+    // ---
+
+    function _decimalsOffset() internal view override returns (uint8) {
+        return decimalsOffset;
     }
 
     // ---

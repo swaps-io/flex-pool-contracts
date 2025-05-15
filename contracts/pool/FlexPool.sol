@@ -16,6 +16,7 @@ import {BorrowHashLib} from "./libraries/BorrowHashLib.sol";
 
 contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2Step, Multicall {
     bytes32 private constant OBLIGATE_EVENT_SIGNATURE = keccak256("Obligate(bytes32)");
+    bytes32 private constant BORROW_EVENT_SIGNATURE = keccak256("Borrow(bytes32)");
 
     uint8 public immutable override decimalsOffset;
     ITuner public immutable override tuner;
@@ -172,6 +173,28 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         _sendAssets(borrowAssets_, borrowReceiver_);
 
         emit Borrow(borrowHash);
+    }
+
+    function verifyEvent(
+        uint256 chain_,
+        address emitter_,
+        bytes32[] calldata topics_,
+        bytes calldata data_,
+        bytes calldata /* proof_ */
+    ) external view {
+        require(chain_ == block.chainid, EventChainMismatch(chain_, block.chainid));
+        require(emitter_ == address(this), EventEmitterMismatch(emitter_, address(this)));
+        require(topics_.length != 2, EventTopicsMismatch(topics_, 2));
+        require(data_.length == 0, EventDataMismatch(data_, 0));
+
+        bytes32 eventSignature = topics_[0];
+        if (eventSignature == OBLIGATE_EVENT_SIGNATURE) {
+            _verifyBorrowState(topics_[1], 1);
+        } else if (eventSignature == BORROW_EVENT_SIGNATURE) {
+            _verifyBorrowState(topics_[1], 2);
+        } else {
+            revert EventSignatureMismatch(eventSignature);
+        }
     }
 
     // Owner functionality

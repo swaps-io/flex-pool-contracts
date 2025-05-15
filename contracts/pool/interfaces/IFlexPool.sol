@@ -13,7 +13,7 @@ import {ITuner} from "../../tuner/interfaces/ITuner.sol";
 
 import {IEventVerifier} from "../../verifier/interfaces/IEventVerifier.sol";
 
-interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
+interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
     event Obligate(bytes32 indexed borrowHash);
     event Borrow(bytes32 indexed borrowHash);
 
@@ -24,6 +24,12 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
     error InvalidBorrowState(bytes32 borrowHash, uint256 state, uint256 expectedState);
     error EquilibriumAffected(int256 assets, int256 minAssets, int256 maxAssets);
     error ReserveAffected(uint256 assets, uint256 minAssets);
+
+    error EventChainMismatch(uint256 chain, uint256 expectedChain);
+    error EventEmitterMismatch(address emitter, address expectedEmitter);
+    error EventTopicsMismatch(bytes32[] topics, uint256 expectedTopicsLength);
+    error EventDataMismatch(bytes data, uint256 expectedDataLength);
+    error EventSignatureMismatch(bytes32 eventSignature);
 
     error SameEnclavePool(uint256 chain, address pool);
     error NoEnclavePool(uint256 chain);

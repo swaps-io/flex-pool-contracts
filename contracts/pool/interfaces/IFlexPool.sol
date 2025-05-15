@@ -20,6 +20,8 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
     event Borrow(bytes32 indexed borrowHash);
 
     error InvalidBorrowState(bytes32 borrowHash, uint256 borrowState);
+    error EquilibriumAffected(int256 assets, int256 minAssets, int256 maxAssets);
+    error ReserveAffected(uint256 assets, uint256 minAssets);
 
     function obligor() external view returns (IObligor);
 
@@ -36,6 +38,10 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
     function availableAssets() external view returns (uint256);
 
     function reserveAssets() external view returns (uint256);
+
+    function rebalanceReserveAssets() external view returns (uint256);
+
+    function withdrawReserveAssets() external view returns (uint256);
 
     function borrowState(bytes32 borrowHash) external view returns (uint256);
 

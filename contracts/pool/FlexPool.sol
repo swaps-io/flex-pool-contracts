@@ -23,6 +23,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
 
     int256 public override equilibriumAssets;
     uint256 public override reserveAssets;
+    uint256 public override withdrawReserveAssets;
     mapping(bytes32 borrowHash => uint256) public override borrowState;
 
     constructor(
@@ -65,6 +66,10 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
         return currentAssets() - reserveAssets;
     }
 
+    function rebalanceReserveAssets() public view override returns (uint256) {
+        return reserveAssets - withdrawReserveAssets;
+    }
+
     function previewTune(
         uint256 borrowChain_,
         uint256 borrowAssets_,
@@ -86,7 +91,10 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
         bytes calldata tunerData_,
         bytes calldata obligorData_
     ) external override {
-        (,, uint256 repayAssets) = previewTune(borrowChain_, borrowAssets_, borrowReceiver_, tunerData_);
+        (/* uint256 protocolAssets */,
+            uint256 rebalanceAssets,
+            uint256 repayAssets
+        ) = previewTune(borrowChain_, borrowAssets_, borrowReceiver_, tunerData_);
 
         bytes32 obligateHash = obligor.obligate(repayAssets, obligorData_);
 
@@ -100,6 +108,9 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
         uint256 state = borrowState[borrowHash];
         require(state == 0, InvalidBorrowState(borrowHash, state));
         borrowState[borrowHash] = 1;
+
+        _shiftEquilibriumAssets(int256(repayAssets), 0);
+        _gainReserveAssets(rebalanceAssets, 0);
 
         emit Obligate(borrowHash);
     }
@@ -131,10 +142,38 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
             obligateTopics[1] = borrowHash;
             verifier.verifyEvent(obligateChain_, obligateEmitter, obligateTopics, "", obligateProof_);
         }
-
         borrowState[borrowHash] = 2;
-        SafeERC20.safeTransfer(IERC20(asset()), borrowReceiver_, borrowAssets_);
+
+        _shiftEquilibriumAssets(-int256(borrowAssets_), 0);
+        _sendAssets(borrowAssets_, borrowReceiver_);
 
         emit Borrow(borrowHash);
+    }
+
+    function _shiftEquilibriumAssets(int256 assets_, uint256 flags_) internal {
+        int256 newAssets = equilibriumAssets + assets_;
+        if (flags_ & 1 != 0) {
+            require(newAssets >= 0, EquilibriumAffected(newAssets, 0, type(int256).max));
+        }
+        if (flags_ & 2 != 0) {
+            require(newAssets <= 0, EquilibriumAffected(newAssets, type(int256).min, 0));
+        }
+        equilibriumAssets = newAssets;
+    }
+
+    function _gainReserveAssets(uint256 assets_, uint256 flags_) internal {
+        reserveAssets += assets_;
+        if (flags_ & 1 != 0) {
+            withdrawReserveAssets += assets_;
+        }
+    }
+
+    function _verifyReserveAssets() private view {
+        require(currentAssets() >= reserveAssets, ReserveAffected(currentAssets(), reserveAssets));
+    }
+
+    function _sendAssets(uint256 assets_, address receiver_) internal {
+        SafeERC20.safeTransfer(IERC20(asset()), receiver_, assets_);
+        _verifyReserveAssets();
     }
 }

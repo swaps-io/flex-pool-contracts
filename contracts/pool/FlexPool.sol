@@ -18,6 +18,10 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     bytes32 private constant OBLIGATE_EVENT_SIGNATURE = keccak256("Obligate(bytes32)");
     bytes32 private constant BORROW_EVENT_SIGNATURE = keccak256("Borrow(bytes32)");
 
+    uint256 private constant BORROW_STATE_NONE = 0;
+    uint256 private constant BORROW_STATE_OBLIGATED = 1;
+    uint256 private constant BORROW_STATE_BORROWED = 2;
+
     uint8 public immutable override decimalsOffset;
     ITuner public immutable override tuner;
     IEventVerifier public immutable override verifier;
@@ -131,11 +135,11 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             block.chainid,
             obligateHash
         );
-        _verifyBorrowState(borrowHash, 0);
-        borrowState[borrowHash] = 1;
+        _verifyBorrowState(borrowHash, BORROW_STATE_NONE);
+        borrowState[borrowHash] = BORROW_STATE_OBLIGATED;
 
-        _shiftEquilibriumAssets(int256(repayAssets), 0);
-        _gainReserveAssets(rebalanceAssets, 0);
+        _shiftEquilibriumAssets(int256(repayAssets), false, false);
+        _gainReserveAssets(rebalanceAssets, false);
 
         emit Obligate(borrowHash);
     }
@@ -156,20 +160,14 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         );
 
         if (obligateChain_ == block.chainid) {
-            _verifyBorrowState(borrowHash, 1);
+            _verifyBorrowState(borrowHash, BORROW_STATE_OBLIGATED);
         } else {
-            _verifyBorrowState(borrowHash, 0);
-
-            address obligateEmitter = enclavePool[obligateChain_];
-            require(obligateEmitter != address(0), NoEnclavePool(obligateChain_));
-            bytes32[] memory obligateTopics = new bytes32[](2);
-            obligateTopics[0] = OBLIGATE_EVENT_SIGNATURE;
-            obligateTopics[1] = borrowHash;
-            verifier.verifyEvent(obligateChain_, obligateEmitter, obligateTopics, "", obligateProof_);
+            _verifyBorrowState(borrowHash, BORROW_STATE_NONE);
+            _verifyObligateEvent(obligateChain_, borrowHash, obligateProof_);
         }
-        borrowState[borrowHash] = 2;
+        borrowState[borrowHash] = BORROW_STATE_BORROWED;
 
-        _shiftEquilibriumAssets(-int256(borrowAssets_), 0);
+        _shiftEquilibriumAssets(-int256(borrowAssets_), false, false);
         _sendAssets(borrowAssets_, borrowReceiver_);
 
         emit Borrow(borrowHash);
@@ -181,7 +179,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         bytes32[] calldata topics_,
         bytes calldata data_,
         bytes calldata /* proof_ */
-    ) external view {
+    ) external view override {
         require(chain_ == block.chainid, EventChainMismatch(chain_, block.chainid));
         require(emitter_ == address(this), EventEmitterMismatch(emitter_, address(this)));
         require(topics_.length != 2, EventTopicsMismatch(topics_, 2));
@@ -189,9 +187,9 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
 
         bytes32 eventSignature = topics_[0];
         if (eventSignature == OBLIGATE_EVENT_SIGNATURE) {
-            _verifyBorrowState(topics_[1], 1);
+            _verifyBorrowState(topics_[1], BORROW_STATE_OBLIGATED);
         } else if (eventSignature == BORROW_EVENT_SIGNATURE) {
-            _verifyBorrowState(topics_[1], 2);
+            _verifyBorrowState(topics_[1], BORROW_STATE_BORROWED);
         } else {
             revert EventSignatureMismatch(eventSignature);
         }
@@ -256,20 +254,29 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         require(currentAssets() >= reserveAssets, ReserveAffected(currentAssets(), reserveAssets));
     }
 
-    function _shiftEquilibriumAssets(int256 assets_, uint256 flags_) private {
+    function _verifyObligateEvent(uint256 chain_, bytes32 borrowHash_, bytes calldata proof_) private {
+        address emitter = enclavePool[chain_];
+        require(emitter != address(0), NoEnclavePool(chain_));
+        bytes32[] memory topics = new bytes32[](2);
+        topics[0] = OBLIGATE_EVENT_SIGNATURE;
+        topics[1] = borrowHash_;
+        verifier.verifyEvent(chain_, emitter, topics, "", proof_);
+    }
+
+    function _shiftEquilibriumAssets(int256 assets_, bool positive_, bool negative_) private {
         int256 newAssets = equilibriumAssets + assets_;
-        if (flags_ & 1 != 0) {
+        if (positive_) {
             require(newAssets >= 0, EquilibriumAffected(newAssets, 0, type(int256).max));
         }
-        if (flags_ & 2 != 0) {
+        if (negative_) {
             require(newAssets <= 0, EquilibriumAffected(newAssets, type(int256).min, 0));
         }
         equilibriumAssets = newAssets;
     }
 
-    function _gainReserveAssets(uint256 assets_, uint256 flags_) private {
+    function _gainReserveAssets(uint256 assets_, bool withdraw_) private {
         reserveAssets += assets_;
-        if (flags_ & 1 != 0) {
+        if (withdraw_) {
             withdrawReserveAssets += assets_;
         }
     }

@@ -17,7 +17,6 @@ import {BorrowHashLib} from "./libraries/BorrowHashLib.sol";
 contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2Step, Multicall {
     bytes32 private constant OBLIGATE_EVENT_SIGNATURE = keccak256("Obligate(bytes32)");
 
-    IObligor public immutable override obligor;
     ITuner public immutable override tuner;
     IEventVerifier public immutable override verifier;
 
@@ -26,6 +25,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     uint256 public override withdrawReserveAssets;
     mapping(bytes32 borrowHash => uint256) public override borrowState;
     mapping(uint256 chain => address) public override enclavePool;
+    mapping(address obligor => bool) public override obligorEnable;
 
     uint256 private _functionPauseBits;
 
@@ -38,7 +38,6 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         IERC20 asset_,
         string memory name_,
         string memory symbol_,
-        IObligor obligor_,
         ITuner tuner_,
         IEventVerifier verifier_,
         address initialOwner_
@@ -49,7 +48,6 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         AssetPermitter(asset_)
         Ownable(initialOwner_)
     {
-        obligor = obligor_;
         tuner = tuner_;
         verifier = verifier_;
     }
@@ -101,6 +99,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         uint256 borrowAssets_,
         address borrowReceiver_,
         bytes calldata tunerData_,
+        IObligor obligor_,
         bytes calldata obligorData_
     ) external override pausable(0) {
         (/* uint256 protocolAssets */,
@@ -108,7 +107,8 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             uint256 repayAssets
         ) = previewTune(borrowChain_, borrowAssets_, borrowReceiver_, tunerData_);
 
-        bytes32 obligateHash = obligor.obligate(repayAssets, obligorData_);
+        require(obligorEnable[address(obligor_)], ObligorDisabled(address(obligor_)));
+        bytes32 obligateHash = obligor_.obligate(repayAssets, obligorData_);
 
         bytes32 borrowHash = BorrowHashLib.calc(
             borrowChain_,
@@ -172,11 +172,16 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         emit EnclavePoolUpdate(chain_, oldPool, pool_);
     }
 
+    function setObligorEnable(address obligor_, bool enable_) external override onlyOwner {
+        require(enable_ != obligorEnable[obligor_], SameObligorEnable(obligor_, enable_));
+        obligorEnable[obligor_] = enable_;
+        emit ObligorEnableUpdate(obligor_, enable_);
+    }
+
     function setFunctionPause(uint8 index_, bool pause_) external override onlyOwner {
         uint256 mask = 1 << index_;
         uint256 bits = _functionPauseBits;
-        bool oldPause = bits & mask != 0;
-        require(pause_ != oldPause, SameFunctionPause(index_, pause_));
+        require(pause_ != (bits & mask != 0), SameFunctionPause(index_, pause_));
         _functionPauseBits = pause_ ? bits | mask : bits & ~mask;
         emit FunctionPauseUpdate(index_, pause_);
     }

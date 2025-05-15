@@ -40,6 +40,8 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
 
     function decimalsOffset() external view returns (uint8);
 
+    function enclaveDecimalsOffset() external view returns (uint8);
+
     function tuner() external view returns (ITuner);
 
     function verifier() external view returns (IEventVerifier);
@@ -64,9 +66,11 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
 
     function functionPause(uint8 index) external view returns (bool);
 
+    function convertToEnclaveAssets(uint256 assets) external view returns (uint256);
+
     function calcBorrowHash(
         uint256 borrowChain,
-        uint256 borrowAssets,
+        uint256 borrowEnclaveAssets,
         address borrowReceiver,
         uint256 obligateChain,
         uint256 obligateNonce

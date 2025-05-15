@@ -5,7 +5,7 @@ pragma solidity ^0.8.26;
 library BorrowHashLib {
     function calc(
         uint256 borrowChain_,
-        uint256 borrowAssets_,
+        uint256 borrowEnclaveAssets_,
         address borrowReceiver_,
         uint256 obligateChain_,
         uint256 obligateNonce_
@@ -14,7 +14,7 @@ library BorrowHashLib {
         assembly ("memory-safe") {
             let ptr := mload(0x40)
             mstore(ptr, borrowChain_)
-            mstore(add(ptr, 0x20), borrowAssets_)
+            mstore(add(ptr, 0x20), borrowEnclaveAssets_)
             mstore(add(ptr, 0x40), borrowReceiver_)
             mstore(add(ptr, 0x60), obligateChain_)
             mstore(add(ptr, 0x80), obligateNonce_)

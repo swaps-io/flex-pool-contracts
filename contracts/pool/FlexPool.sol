@@ -23,6 +23,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     uint256 private constant BORROW_STATE_BORROWED = 2;
 
     uint8 public immutable override decimalsOffset;
+    uint8 public immutable override enclaveDecimalsOffset;
     ITuner public immutable override tuner;
     IEventVerifier public immutable override verifier;
 
@@ -45,6 +46,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         string memory name_,
         string memory symbol_,
         uint8 decimalsOffset_,
+        uint8 enclaveDecimalsOffset_,
         ITuner tuner_,
         IEventVerifier verifier_,
         address initialOwner_
@@ -56,6 +58,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         Ownable(initialOwner_)
     {
         decimalsOffset = decimalsOffset_;
+        enclaveDecimalsOffset = enclaveDecimalsOffset_;
         tuner = tuner_;
         verifier = verifier_;
     }
@@ -88,14 +91,24 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         return 1 << index_ & _functionPauseBits != 0;
     }
 
+    function convertToEnclaveAssets(uint256 assets_) public view override returns (uint256) {
+        return assets_ * 10 ** enclaveDecimalsOffset;
+    }
+
     function calcBorrowHash(
         uint256 borrowChain_,
-        uint256 borrowAssets_,
+        uint256 borrowEnclaveAssets_,
         address borrowReceiver_,
         uint256 obligateChain_,
         uint256 obligateNonce_
     ) external pure override returns (bytes32) {
-        return BorrowHashLib.calc(borrowChain_, borrowAssets_, borrowReceiver_, obligateChain_, obligateNonce_);
+        return BorrowHashLib.calc(
+            borrowChain_,
+            borrowEnclaveAssets_,
+            borrowReceiver_,
+            obligateChain_,
+            obligateNonce_
+        );
     }
 
     function previewTune(
@@ -130,7 +143,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
 
         bytes32 borrowHash = BorrowHashLib.calc(
             borrowChain_,
-            borrowAssets_,
+            convertToEnclaveAssets(borrowAssets_),
             borrowReceiver_,
             block.chainid,
             obligateNonce
@@ -153,7 +166,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     ) external override pausable(1) {
         bytes32 borrowHash = BorrowHashLib.calc(
             block.chainid,
-            borrowAssets_,
+            convertToEnclaveAssets(borrowAssets_),
             borrowReceiver_,
             obligateChain_,
             obligateNonce_

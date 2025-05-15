@@ -18,10 +18,9 @@ describe('FlexPool', function () {
       asset.address, // asset
       'Pool Test Token', // name
       'PTT', // symbol
-      zeroAddress, // obligor (TODO)
       zeroAddress, // tuner (TODO)
       zeroAddress, // verifier (TODO)
-      zeroAddress, // pools (TODO)
+      walletClient.account.address, // owner (TODO)
     ]);
 
     return {

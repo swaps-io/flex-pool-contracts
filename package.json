@@ -6,6 +6,7 @@
     "b": "yarn build",
     "test": "yarn hardhat test",
     "t": "yarn test",
+    "tg": "yarn test --grep",
     "lint": "yarn solhint --noPoster --max-warnings 0 'contracts/**/*.sol'",
     "l": "yarn lint"
   },

@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.26;
 
-import {ERC4626, ERC20, IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
-import {ERC20Permit, IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC4626, IERC4626, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
+import {ERC20Permit, IERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
 
 import {AssetPermitter} from "../permit/AssetPermitter.sol";
@@ -21,6 +21,8 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
     IEventVerifier public immutable override verifier;
     IPoolRouter public immutable override pools;
 
+    int256 public override equilibriumAssets;
+    uint256 public override reserveAssets;
     mapping(bytes32 borrowHash => uint256) public override borrowState;
 
     constructor(
@@ -49,6 +51,18 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
 
     function nonces(address owner_) public view virtual override(ERC20Permit, IERC20Permit) returns (uint256) {
         return ERC20Permit.nonces(owner_);
+    }
+
+    function totalAssets() public view virtual override(ERC4626, IERC4626) returns (uint256) {
+        return uint256(int256(availableAssets()) - equilibriumAssets);
+    }
+
+    function currentAssets() public view override returns (uint256) {
+        return ERC4626.totalAssets();
+    }
+
+    function availableAssets() public view override returns (uint256) {
+        return currentAssets() - reserveAssets;
     }
 
     function previewTune(

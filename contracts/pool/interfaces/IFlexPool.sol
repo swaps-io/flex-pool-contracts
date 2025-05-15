@@ -29,6 +29,14 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
 
     function pools() external view returns (IPoolRouter);
 
+    function currentAssets() external view returns (uint256);
+
+    function equilibriumAssets() external view returns (int256);
+
+    function availableAssets() external view returns (uint256);
+
+    function reserveAssets() external view returns (uint256);
+
     function borrowState(bytes32 borrowHash) external view returns (uint256);
 
     function previewTune(

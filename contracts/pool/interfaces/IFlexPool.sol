@@ -16,13 +16,17 @@ import {IEventVerifier} from "../../verifier/interfaces/IEventVerifier.sol";
 interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
     event Obligate(bytes32 indexed borrowHash);
     event Borrow(bytes32 indexed borrowHash);
-    event EnclaveUpdate(uint256 indexed chain, address oldPool, address newPool);
+
+    event EnclavePoolUpdate(uint256 indexed chain, address indexed oldPool, address indexed newPool);
+    event FunctionPauseUpdate(uint8 indexed index, bool indexed pause);
 
     error InvalidBorrowState(bytes32 borrowHash, uint256 borrowState);
     error EquilibriumAffected(int256 assets, int256 minAssets, int256 maxAssets);
     error ReserveAffected(uint256 assets, uint256 minAssets);
     error SameEnclavePool(uint256 chain, address pool);
     error NoEnclavePool(uint256 chain);
+    error SameFunctionPause(uint8 index, bool pause);
+    error FunctionPaused(uint8 index);
 
     function obligor() external view returns (IObligor);
 
@@ -46,6 +50,8 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
 
     function enclavePool(uint256 chain) external view returns (address);
 
+    function functionPause(uint8 index) external view returns (bool);
+
     function previewTune(
         uint256 borrowChain,
         uint256 borrowAssets,
@@ -63,7 +69,7 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
         address borrowReceiver,
         bytes calldata tunerData,
         bytes calldata obligorData
-    ) external;
+    ) external; // Pausable #0
 
     function borrow(
         uint256 borrowAssets,
@@ -71,9 +77,11 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
         uint256 obligateChain,
         bytes32 obligateHash,
         bytes calldata obligateProof
-    ) external;
+    ) external; // Pausable #1
 
     // Owner functionality
 
     function setEnclavePool(uint256 chain, address pool) external;
+
+    function setFunctionPause(uint8 index, bool pause) external;
 }

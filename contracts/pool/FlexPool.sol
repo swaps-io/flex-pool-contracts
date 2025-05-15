@@ -27,6 +27,13 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     mapping(bytes32 borrowHash => uint256) public override borrowState;
     mapping(uint256 chain => address) public override enclavePool;
 
+    uint256 private _functionPauseBits;
+
+    modifier pausable(uint8 index_) {
+        require(!functionPause(index_), FunctionPaused(index_));
+        _;
+    }
+
     constructor(
         IERC20 asset_,
         string memory name_,
@@ -71,6 +78,10 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         return reserveAssets - withdrawReserveAssets;
     }
 
+    function functionPause(uint8 index_) public view override returns (bool) {
+        return 1 << index_ & _functionPauseBits != 0;
+    }
+
     function previewTune(
         uint256 borrowChain_,
         uint256 borrowAssets_,
@@ -91,7 +102,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         address borrowReceiver_,
         bytes calldata tunerData_,
         bytes calldata obligorData_
-    ) external override {
+    ) external override pausable(0) {
         (/* uint256 protocolAssets */,
             uint256 rebalanceAssets,
             uint256 repayAssets
@@ -122,7 +133,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         uint256 obligateChain_,
         bytes32 obligateHash_,
         bytes calldata obligateProof_
-    ) external override {
+    ) external override pausable(1) {
         bytes32 borrowHash = BorrowHashLib.calc(
             block.chainid,
             borrowAssets_,
@@ -158,7 +169,16 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         address oldPool = enclavePool[chain_];
         require(pool_ != oldPool, SameEnclavePool(chain_, pool_));
         enclavePool[chain_] = pool_;
-        emit EnclaveUpdate(chain_, oldPool, pool_);
+        emit EnclavePoolUpdate(chain_, oldPool, pool_);
+    }
+
+    function setFunctionPause(uint8 index_, bool pause_) external override onlyOwner {
+        uint256 mask = 1 << index_;
+        uint256 bits = _functionPauseBits;
+        bool oldPause = bits & mask != 0;
+        require(pause_ != oldPause, SameFunctionPause(index_, pause_));
+        _functionPauseBits = pause_ ? bits | mask : bits & ~mask;
+        emit FunctionPauseUpdate(index_, pause_);
     }
 
     // ---

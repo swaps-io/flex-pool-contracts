@@ -13,23 +13,22 @@ import {ITuner} from "../../tuner/interfaces/ITuner.sol";
 
 import {IEventVerifier} from "../../verifier/interfaces/IEventVerifier.sol";
 
-import {IPoolRouter} from "../router/interfaces/IPoolRouter.sol";
-
 interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
     event Obligate(bytes32 indexed borrowHash);
     event Borrow(bytes32 indexed borrowHash);
+    event EnclaveUpdate(uint256 indexed chain, address oldPool, address newPool);
 
     error InvalidBorrowState(bytes32 borrowHash, uint256 borrowState);
     error EquilibriumAffected(int256 assets, int256 minAssets, int256 maxAssets);
     error ReserveAffected(uint256 assets, uint256 minAssets);
+    error SameEnclavePool(uint256 chain, address pool);
+    error NoEnclavePool(uint256 chain);
 
     function obligor() external view returns (IObligor);
 
     function tuner() external view returns (ITuner);
 
     function verifier() external view returns (IEventVerifier);
-
-    function pools() external view returns (IPoolRouter);
 
     function currentAssets() external view returns (uint256);
 
@@ -44,6 +43,8 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
     function withdrawReserveAssets() external view returns (uint256);
 
     function borrowState(bytes32 borrowHash) external view returns (uint256);
+
+    function enclavePool(uint256 chain) external view returns (address);
 
     function previewTune(
         uint256 borrowChain,
@@ -71,4 +72,8 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
         bytes32 obligateHash,
         bytes calldata obligateProof
     ) external;
+
+    // Owner functionality
+
+    function setEnclavePool(uint256 chain, address pool) external;
 }

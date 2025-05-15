@@ -5,26 +5,27 @@ pragma solidity ^0.8.26;
 import {ERC4626, IERC4626, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
 import {ERC20Permit, IERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
 
 import {AssetPermitter} from "../permit/AssetPermitter.sol";
 
-import {IFlexPool, IObligor, ITuner, IEventVerifier, IPoolRouter} from "./interfaces/IFlexPool.sol";
+import {IFlexPool, IObligor, ITuner, IEventVerifier} from "./interfaces/IFlexPool.sol";
 
 import {BorrowHashLib} from "./libraries/BorrowHashLib.sol";
 
-contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall {
+contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2Step, Multicall {
     bytes32 private constant OBLIGATE_EVENT_SIGNATURE = keccak256("Obligate(bytes32)");
 
     IObligor public immutable override obligor;
     ITuner public immutable override tuner;
     IEventVerifier public immutable override verifier;
-    IPoolRouter public immutable override pools;
 
     int256 public override equilibriumAssets;
     uint256 public override reserveAssets;
     uint256 public override withdrawReserveAssets;
     mapping(bytes32 borrowHash => uint256) public override borrowState;
+    mapping(uint256 chain => address) public override enclavePool;
 
     constructor(
         IERC20 asset_,
@@ -33,17 +34,17 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
         IObligor obligor_,
         ITuner tuner_,
         IEventVerifier verifier_,
-        IPoolRouter pools_
+        address initialOwner_
     )
         ERC4626(asset_)
         ERC20(name_, symbol_)
         ERC20Permit(name_)
         AssetPermitter(asset_)
+        Ownable(initialOwner_)
     {
         obligor = obligor_;
         tuner = tuner_;
         verifier = verifier_;
-        pools = pools_;
     }
 
     function decimals() public view virtual override(ERC4626, ERC20, IERC20Metadata) returns (uint8) {
@@ -136,7 +137,8 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
         } else {
             require(state == 0, InvalidBorrowState(borrowHash, state));
 
-            address obligateEmitter = pools.pool(obligateChain_);
+            address obligateEmitter = enclavePool[obligateChain_];
+            require(obligateEmitter != address(0), NoEnclavePool(obligateChain_));
             bytes32[] memory obligateTopics = new bytes32[](2);
             obligateTopics[0] = OBLIGATE_EVENT_SIGNATURE;
             obligateTopics[1] = borrowHash;
@@ -150,7 +152,18 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
         emit Borrow(borrowHash);
     }
 
-    function _shiftEquilibriumAssets(int256 assets_, uint256 flags_) internal {
+    // Owner functionality
+
+    function setEnclavePool(uint256 chain_, address pool_) external override onlyOwner {
+        address oldPool = enclavePool[chain_];
+        require(pool_ != oldPool, SameEnclavePool(chain_, pool_));
+        enclavePool[chain_] = pool_;
+        emit EnclaveUpdate(chain_, oldPool, pool_);
+    }
+
+    // ---
+
+    function _shiftEquilibriumAssets(int256 assets_, uint256 flags_) private {
         int256 newAssets = equilibriumAssets + assets_;
         if (flags_ & 1 != 0) {
             require(newAssets >= 0, EquilibriumAffected(newAssets, 0, type(int256).max));
@@ -161,7 +174,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
         equilibriumAssets = newAssets;
     }
 
-    function _gainReserveAssets(uint256 assets_, uint256 flags_) internal {
+    function _gainReserveAssets(uint256 assets_, uint256 flags_) private {
         reserveAssets += assets_;
         if (flags_ & 1 != 0) {
             withdrawReserveAssets += assets_;
@@ -172,7 +185,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Multicall 
         require(currentAssets() >= reserveAssets, ReserveAffected(currentAssets(), reserveAssets));
     }
 
-    function _sendAssets(uint256 assets_, address receiver_) internal {
+    function _sendAssets(uint256 assets_, address receiver_) private {
         SafeERC20.safeTransfer(IERC20(asset()), receiver_, assets_);
         _verifyReserveAssets();
     }

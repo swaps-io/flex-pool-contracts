@@ -203,6 +203,25 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         return decimalsOffset;
     }
 
+    function _deposit(
+        address caller_,
+        address receiver_,
+        uint256 assets_,
+        uint256 shares_
+    ) internal override pausable(2) {
+        ERC4626._deposit(caller_, receiver_, assets_, shares_);
+    }
+
+    function _withdraw(
+        address caller_,
+        address receiver_,
+        address owner_,
+        uint256 assets_,
+        uint256 shares_
+    ) internal override pausable(3) {
+        ERC4626._withdraw(caller_, receiver_, owner_, assets_, shares_);
+    }
+
     // ---
 
     function _verifyBorrowState(bytes32 borrowHash_, uint256 expectedState_) private view {

@@ -93,9 +93,9 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         uint256 borrowAssets_,
         address borrowReceiver_,
         uint256 obligateChain_,
-        bytes32 obligateHash_
+        uint256 obligateNonce_
     ) external pure override returns (bytes32) {
-        return BorrowHashLib.calc(borrowChain_, borrowAssets_, borrowReceiver_, obligateChain_, obligateHash_);
+        return BorrowHashLib.calc(borrowChain_, borrowAssets_, borrowReceiver_, obligateChain_, obligateNonce_);
     }
 
     function previewTune(
@@ -126,14 +126,14 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         ) = previewTune(borrowChain_, borrowAssets_, borrowReceiver_, tunerData_);
 
         require(obligorEnable[address(obligor_)], ObligorDisabled(address(obligor_)));
-        bytes32 obligateHash = obligor_.obligate(repayAssets, obligorData_);
+        uint256 obligateNonce = obligor_.obligate(repayAssets, obligorData_);
 
         bytes32 borrowHash = BorrowHashLib.calc(
             borrowChain_,
             borrowAssets_,
             borrowReceiver_,
             block.chainid,
-            obligateHash
+            obligateNonce
         );
         _verifyBorrowState(borrowHash, BORROW_STATE_NONE);
         borrowState[borrowHash] = BORROW_STATE_OBLIGATED;
@@ -148,7 +148,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         uint256 borrowAssets_,
         address borrowReceiver_,
         uint256 obligateChain_,
-        bytes32 obligateHash_,
+        uint256 obligateNonce_,
         bytes calldata obligateProof_
     ) external override pausable(1) {
         bytes32 borrowHash = BorrowHashLib.calc(
@@ -156,7 +156,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             borrowAssets_,
             borrowReceiver_,
             obligateChain_,
-            obligateHash_
+            obligateNonce_
         );
 
         if (obligateChain_ == block.chainid) {

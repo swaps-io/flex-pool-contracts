@@ -8,7 +8,7 @@ library BorrowHashLib {
         uint256 borrowAssets_,
         address borrowReceiver_,
         uint256 obligateChain_,
-        bytes32 obligateHash_
+        uint256 obligateNonce_
     ) internal pure returns (bytes32 hash) {
         // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
@@ -17,7 +17,7 @@ library BorrowHashLib {
             mstore(add(ptr, 0x20), borrowAssets_)
             mstore(add(ptr, 0x40), borrowReceiver_)
             mstore(add(ptr, 0x60), obligateChain_)
-            mstore(add(ptr, 0x80), obligateHash_)
+            mstore(add(ptr, 0x80), obligateNonce_)
             hash := keccak256(ptr, 0xa0)
         }
     }

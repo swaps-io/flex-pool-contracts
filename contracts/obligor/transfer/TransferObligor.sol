@@ -20,8 +20,8 @@ contract TransferObligor is ITransferObligor, PoolObligor, AssetPermitter, Multi
     function _obligate(
         uint256 repayAssets_,
         bytes calldata data_
-    ) internal override returns (bytes32 obligateHash) {
+    ) internal override returns (uint256 obligateNonce) {
         SafeERC20.safeTransfer(poolAsset, address(pool), repayAssets_);
-        obligateHash = bytes32(data_[0:32]);
+        obligateNonce = uint256(bytes32(data_[0:32]));
     }
 }

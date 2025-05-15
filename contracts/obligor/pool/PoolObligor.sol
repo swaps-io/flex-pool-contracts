@@ -21,12 +21,12 @@ abstract contract PoolObligor is IPoolObligor {
     function obligate(
         uint256 repayAssets_,
         bytes calldata data_
-    ) external override onlyPool returns (bytes32 obligateHash) {
+    ) external override onlyPool returns (uint256 obligateNonce) {
         return _obligate(repayAssets_, data_);
     }
 
     function _obligate(
         uint256 repayAssets,
         bytes calldata data
-    ) internal virtual returns (bytes32 obligateHash);
+    ) internal virtual returns (uint256 obligateNonce);
 }

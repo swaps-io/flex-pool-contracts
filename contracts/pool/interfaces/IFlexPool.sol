@@ -21,9 +21,10 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
     event ObligorEnableUpdate(address indexed obligor, bool indexed enable);
     event FunctionPauseUpdate(uint8 indexed index, bool indexed pause);
 
-    error InvalidBorrowState(bytes32 borrowHash, uint256 borrowState);
+    error InvalidBorrowState(bytes32 borrowHash, uint256 state, uint256 expectedState);
     error EquilibriumAffected(int256 assets, int256 minAssets, int256 maxAssets);
     error ReserveAffected(uint256 assets, uint256 minAssets);
+
     error SameEnclavePool(uint256 chain, address pool);
     error NoEnclavePool(uint256 chain);
     error SameObligorEnable(address obligor, bool enable);
@@ -54,6 +55,14 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter {
     function obligorEnable(address obligor) external view returns (bool);
 
     function functionPause(uint8 index) external view returns (bool);
+
+    function calcBorrowHash(
+        uint256 borrowChain,
+        uint256 borrowAssets,
+        address borrowReceiver,
+        uint256 obligateChain,
+        bytes32 obligateHash
+    ) external view returns (bytes32);
 
     function previewTune(
         uint256 borrowChain,

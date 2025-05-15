@@ -80,6 +80,16 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         return 1 << index_ & _functionPauseBits != 0;
     }
 
+    function calcBorrowHash(
+        uint256 borrowChain_,
+        uint256 borrowAssets_,
+        address borrowReceiver_,
+        uint256 obligateChain_,
+        bytes32 obligateHash_
+    ) external pure override returns (bytes32) {
+        return BorrowHashLib.calc(borrowChain_, borrowAssets_, borrowReceiver_, obligateChain_, obligateHash_);
+    }
+
     function previewTune(
         uint256 borrowChain_,
         uint256 borrowAssets_,
@@ -117,8 +127,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             block.chainid,
             obligateHash
         );
-        uint256 state = borrowState[borrowHash];
-        require(state == 0, InvalidBorrowState(borrowHash, state));
+        _verifyBorrowState(borrowHash, 0);
         borrowState[borrowHash] = 1;
 
         _shiftEquilibriumAssets(int256(repayAssets), 0);
@@ -141,12 +150,11 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             obligateChain_,
             obligateHash_
         );
-        uint256 state = borrowState[borrowHash];
 
         if (obligateChain_ == block.chainid) {
-            require(state == 1, InvalidBorrowState(borrowHash, state));
+            _verifyBorrowState(borrowHash, 1);
         } else {
-            require(state == 0, InvalidBorrowState(borrowHash, state));
+            _verifyBorrowState(borrowHash, 0);
 
             address obligateEmitter = enclavePool[obligateChain_];
             require(obligateEmitter != address(0), NoEnclavePool(obligateChain_));
@@ -188,6 +196,15 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
 
     // ---
 
+    function _verifyBorrowState(bytes32 borrowHash_, uint256 expectedState_) private view {
+        uint256 state = borrowState[borrowHash_];
+        require(state == expectedState_, InvalidBorrowState(borrowHash_, state, expectedState_));
+    }
+
+    function _verifyReserveAssets() private view {
+        require(currentAssets() >= reserveAssets, ReserveAffected(currentAssets(), reserveAssets));
+    }
+
     function _shiftEquilibriumAssets(int256 assets_, uint256 flags_) private {
         int256 newAssets = equilibriumAssets + assets_;
         if (flags_ & 1 != 0) {
@@ -204,10 +221,6 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         if (flags_ & 1 != 0) {
             withdrawReserveAssets += assets_;
         }
-    }
-
-    function _verifyReserveAssets() private view {
-        require(currentAssets() >= reserveAssets, ReserveAffected(currentAssets(), reserveAssets));
     }
 
     function _sendAssets(uint256 assets_, address receiver_) private {

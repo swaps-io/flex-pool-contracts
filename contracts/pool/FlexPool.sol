@@ -10,7 +10,11 @@ import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
 
 import {AssetPermitter} from "../permit/AssetPermitter.sol";
 
-import {IFlexPool, IObligor, ITuner, IEventVerifier} from "./interfaces/IFlexPool.sol";
+import {ITuner} from "../tuner/interfaces/ITuner.sol";
+
+import {IObligor} from "../obligor/interfaces/IObligor.sol";
+
+import {IFlexPool, IEventVerifier} from "./interfaces/IFlexPool.sol";
 
 import {BorrowHashLib} from "./libraries/BorrowHashLib.sol";
 
@@ -24,7 +28,6 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
 
     uint8 public immutable override decimalsOffset;
     uint8 public immutable override enclaveDecimalsOffset;
-    ITuner public immutable override tuner;
     IEventVerifier public immutable override verifier;
 
     int256 public override equilibriumAssets;
@@ -32,7 +35,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     uint256 public override withdrawReserveAssets;
     mapping(bytes32 borrowHash => uint256) public override borrowState;
     mapping(uint256 chain => address) public override enclavePool;
-    mapping(address obligor => bool) public override obligorEnable;
+    mapping(address obligor => address) public override obligorTuner;
 
     uint256 private _functionPauseBits;
 
@@ -47,7 +50,6 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         string memory symbol_,
         uint8 decimalsOffset_,
         uint8 enclaveDecimalsOffset_,
-        ITuner tuner_,
         IEventVerifier verifier_,
         address initialOwner_
     )
@@ -59,7 +61,6 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     {
         decimalsOffset = decimalsOffset_;
         enclaveDecimalsOffset = enclaveDecimalsOffset_;
-        tuner = tuner_;
         verifier = verifier_;
     }
 
@@ -114,15 +115,16 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     function previewObligate(
         uint256 borrowChain_,
         uint256 borrowAssets_,
-        IObligor obligor_,
+        address obligor_,
         bytes calldata tunerData_
     ) public override view returns (
         uint256 protocolAssets,
         int256 influenceAssets,
         uint256 repayAssets
     ) {
-        require(obligorEnable[address(obligor_)], ObligorDisabled(address(obligor_)));
-        (protocolAssets, influenceAssets) = tuner.tune(borrowChain_, borrowAssets_, obligor_, tunerData_);
+        address tuner = obligorTuner[address(obligor_)];
+        require(tuner != address(0), NoObligorTuner(address(obligor_)));
+        (protocolAssets, influenceAssets) = ITuner(tuner).tune(borrowChain_, borrowAssets_, tunerData_);
         repayAssets = uint256(int256(borrowAssets_ + protocolAssets) + influenceAssets);
     }
 
@@ -130,7 +132,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         uint256 borrowChain_,
         uint256 borrowAssets_,
         address borrowReceiver_,
-        IObligor obligor_,
+        address obligor_,
         bytes calldata obligorData_,
         bytes calldata tunerData_
     ) external override pausable(0) {
@@ -139,7 +141,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             uint256 repayAssets
         ) = previewObligate(borrowChain_, borrowAssets_, obligor_, tunerData_);
 
-        uint256 obligateNonce = obligor_.obligate(repayAssets, obligorData_);
+        uint256 obligateNonce = IObligor(obligor_).obligate(repayAssets, obligorData_);
 
         bytes32 borrowHash = BorrowHashLib.calc(
             borrowChain_,
@@ -217,10 +219,11 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         emit EnclavePoolUpdate(chain_, oldPool, pool_);
     }
 
-    function setObligorEnable(address obligor_, bool enable_) external override onlyOwner {
-        require(enable_ != obligorEnable[obligor_], SameObligorEnable(obligor_, enable_));
-        obligorEnable[obligor_] = enable_;
-        emit ObligorEnableUpdate(obligor_, enable_);
+    function setObligorTuner(address obligor_, address tuner_) external override onlyOwner {
+        address oldTuner = obligorTuner[obligor_];
+        require(tuner_ != oldTuner, SameObligorTuner(obligor_, tuner_));
+        obligorTuner[obligor_] = tuner_;
+        emit ObligorTunerUpdate(obligor_, oldTuner, tuner_);
     }
 
     function setFunctionPause(uint8 index_, bool pause_) external override onlyOwner {

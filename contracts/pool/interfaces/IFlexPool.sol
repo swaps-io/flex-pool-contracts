@@ -7,10 +7,6 @@ import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC2
 
 import {IAssetPermitter} from "../../permit/interfaces/IAssetPermitter.sol";
 
-import {IObligor} from "../../obligor/interfaces/IObligor.sol";
-
-import {ITuner} from "../../tuner/interfaces/ITuner.sol";
-
 import {IEventVerifier} from "../../verifier/interfaces/IEventVerifier.sol";
 
 interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
@@ -18,7 +14,7 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
     event Borrow(bytes32 indexed borrowHash);
 
     event EnclavePoolUpdate(uint256 indexed chain, address indexed oldPool, address indexed newPool);
-    event ObligorEnableUpdate(address indexed obligor, bool indexed enable);
+    event ObligorTunerUpdate(address indexed obligor, address indexed oldTuner, address indexed newTuner);
     event FunctionPauseUpdate(uint8 indexed index, bool indexed pause);
 
     error InvalidBorrowState(bytes32 borrowHash, uint256 state, uint256 expectedState);
@@ -33,16 +29,14 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
 
     error SameEnclavePool(uint256 chain, address pool);
     error NoEnclavePool(uint256 chain);
-    error SameObligorEnable(address obligor, bool enable);
-    error ObligorDisabled(address obligor);
+    error SameObligorTuner(address obligor, address tuner);
+    error NoObligorTuner(address obligor);
     error SameFunctionPause(uint8 index, bool pause);
     error FunctionPaused(uint8 index);
 
     function decimalsOffset() external view returns (uint8);
 
     function enclaveDecimalsOffset() external view returns (uint8);
-
-    function tuner() external view returns (ITuner);
 
     function verifier() external view returns (IEventVerifier);
 
@@ -62,7 +56,7 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
 
     function enclavePool(uint256 chain) external view returns (address);
 
-    function obligorEnable(address obligor) external view returns (bool);
+    function obligorTuner(address obligor) external view returns (address);
 
     function functionPause(uint8 index) external view returns (bool);
 
@@ -79,7 +73,7 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
     function previewObligate(
         uint256 borrowChain,
         uint256 borrowAssets,
-        IObligor obligor,
+        address obligor,
         bytes calldata tunerData
     ) external view returns (
         uint256 protocolAssets,
@@ -91,7 +85,7 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
         uint256 borrowChain,
         uint256 borrowAssets,
         address borrowReceiver,
-        IObligor obligor,
+        address obligor,
         bytes calldata obligorData_,
         bytes calldata tunerData
     ) external; // Pausable #0
@@ -108,7 +102,7 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
 
     function setEnclavePool(uint256 chain, address pool) external;
 
-    function setObligorEnable(address obligor, bool enable) external;
+    function setObligorTuner(address obligor, address tuner) external;
 
     function setFunctionPause(uint8 index, bool pause) external;
 }

@@ -5,8 +5,6 @@ pragma solidity ^0.8.26;
 import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
 
-import {IObligor} from "../../obligor/interfaces/IObligor.sol";
-
 import {PoolTuner, IFlexPool} from "../pool/PoolTuner.sol";
 
 import {PercentLib} from "../libraries/PercentLib.sol";
@@ -30,7 +28,6 @@ contract SimpleTuner is ISimpleTuner, PoolTuner, Ownable2Step, Multicall {
     function tune(
         uint256 /* borrowChain_ */,
         uint256 borrowAssets_,
-        IObligor /* obligor_ */,
         bytes calldata /* data_ */
     ) external view override returns (
         uint256 protocolAssets,

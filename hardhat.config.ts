@@ -21,6 +21,7 @@ const config: HardhatUserConfig = {
     only: [
       'contracts/pool/FlexPool.sol',
       'contracts/obligor/transfer/TransferObligor.sol',
+      'contracts/tuner/simple/SimpleTuner.sol',
     ],
   },
 };

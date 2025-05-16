@@ -111,34 +111,34 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         );
     }
 
-    function previewTune(
+    function previewObligate(
         uint256 borrowChain_,
         uint256 borrowAssets_,
-        address borrowReceiver_,
+        IObligor obligor_,
         bytes calldata tunerData_
     ) public override view returns (
         uint256 protocolAssets,
-        uint256 rebalanceAssets,
+        int256 influenceAssets,
         uint256 repayAssets
     ) {
-        (protocolAssets, rebalanceAssets) = tuner.tune(borrowChain_, borrowAssets_, borrowReceiver_, tunerData_);
-        repayAssets = borrowAssets_ + protocolAssets + rebalanceAssets;
+        require(obligorEnable[address(obligor_)], ObligorDisabled(address(obligor_)));
+        (protocolAssets, influenceAssets) = tuner.tune(borrowChain_, borrowAssets_, obligor_, tunerData_);
+        repayAssets = uint256(int256(borrowAssets_ + protocolAssets) + influenceAssets);
     }
 
     function obligate(
         uint256 borrowChain_,
         uint256 borrowAssets_,
         address borrowReceiver_,
-        bytes calldata tunerData_,
         IObligor obligor_,
-        bytes calldata obligorData_
+        bytes calldata obligorData_,
+        bytes calldata tunerData_
     ) external override pausable(0) {
         (/* uint256 protocolAssets */,
-            uint256 rebalanceAssets,
+            int256 influenceAssets,
             uint256 repayAssets
-        ) = previewTune(borrowChain_, borrowAssets_, borrowReceiver_, tunerData_);
+        ) = previewObligate(borrowChain_, borrowAssets_, obligor_, tunerData_);
 
-        require(obligorEnable[address(obligor_)], ObligorDisabled(address(obligor_)));
         uint256 obligateNonce = obligor_.obligate(repayAssets, obligorData_);
 
         bytes32 borrowHash = BorrowHashLib.calc(
@@ -152,7 +152,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         borrowState[borrowHash] = BORROW_STATE_OBLIGATED;
 
         _shiftEquilibriumAssets(int256(repayAssets), false, false);
-        _gainReserveAssets(rebalanceAssets, false);
+        _handleInfluence(influenceAssets);
 
         emit Obligate(borrowHash);
     }
@@ -287,10 +287,10 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         equilibriumAssets = newAssets;
     }
 
-    function _gainReserveAssets(uint256 assets_, bool withdraw_) private {
-        reserveAssets += assets_;
-        if (withdraw_) {
-            withdrawReserveAssets += assets_;
+    function _handleInfluence(int256 assets_) private {
+        // TODO: implement
+        if (assets_ > 0) {
+            reserveAssets += uint256(assets_);
         }
     }
 

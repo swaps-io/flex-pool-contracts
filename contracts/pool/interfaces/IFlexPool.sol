@@ -76,14 +76,14 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
         uint256 obligateNonce
     ) external view returns (bytes32);
 
-    function previewTune(
+    function previewObligate(
         uint256 borrowChain,
         uint256 borrowAssets,
-        address borrowReceiver,
+        IObligor obligor,
         bytes calldata tunerData
     ) external view returns (
         uint256 protocolAssets,
-        uint256 rebalanceAssets,
+        int256 influenceAssets,
         uint256 repayAssets
     );
 
@@ -91,9 +91,9 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
         uint256 borrowChain,
         uint256 borrowAssets,
         address borrowReceiver,
-        bytes calldata tunerData,
         IObligor obligor,
-        bytes calldata obligorData
+        bytes calldata obligorData_,
+        bytes calldata tunerData
     ) external; // Pausable #0
 
     function borrow(

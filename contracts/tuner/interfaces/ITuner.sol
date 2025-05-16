@@ -2,14 +2,16 @@
 
 pragma solidity ^0.8.26;
 
+import {IObligor} from "../../obligor/interfaces/IObligor.sol";
+
 interface ITuner {
     function tune(
         uint256 borrowChain,
         uint256 borrowAssets,
-        address borrowReceiver,
+        IObligor obligor,
         bytes calldata data
     ) external view returns (
         uint256 protocolAssets,
-        uint256 rebalanceAssets
+        int256 influenceAssets
     );
 }

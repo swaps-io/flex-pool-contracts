@@ -9,17 +9,41 @@ import {IAssetPermitter} from "../../permit/interfaces/IAssetPermitter.sol";
 
 import {IEventVerifier} from "../../verifier/interfaces/IEventVerifier.sol";
 
+import {Loan} from "../structs/Loan.sol";
+import {TuneParams} from "../structs/TuneParams.sol";
+import {TuneResult} from "../structs/TuneResult.sol";
+import {GiveParams} from "../structs/GiveParams.sol";
+import {TakeParams} from "../structs/TakeParams.sol";
+import {ConfirmParams} from "../structs/ConfirmParams.sol";
+import {RefuseParams} from "../structs/RefuseParams.sol";
+import {CancelParams} from "../structs/CancelParams.sol";
+
+import {LoanState} from "../enums/LoanState.sol";
+
 interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
-    event Obligate(bytes32 indexed borrowHash);
-    event Borrow(bytes32 indexed borrowHash);
+    event Give(bytes32 indexed loanHash);
+    event Take(bytes32 indexed loanHash);
+    event Confirm(bytes32 indexed loanHash);
+    event Refuse(bytes32 indexed loanHash);
+    event Cancel(bytes32 indexed loanHash);
 
-    event EnclavePoolUpdate(uint256 indexed chain, address indexed oldPool, address indexed newPool);
-    event ObligorTunerUpdate(address indexed obligor, address indexed oldTuner, address indexed newTuner);
-    event FunctionPauseUpdate(uint8 indexed index, bool indexed pause);
+    event EnclavePoolUpdate(uint256 indexed chain, address oldPool, address newPool);
+    event EnclaveTakeProviderUpdate(
+        uint256 indexed takeChain,
+        address indexed tuneProvider,
+        address indexed giveProvider,
+        address oldTakeProvider,
+        address newTakeProvider
+    );
+    event FunctionPause(uint8 indexed index);
+    event FunctionUnpause(uint8 indexed index);
 
-    error InvalidBorrowState(bytes32 borrowHash, uint256 state, uint256 expectedState);
+    error InsufficientEscrowValue(uint256 value, uint256 minValue);
+    error InvalidLoanState(bytes32 loanHash, LoanState state, LoanState expectedState);
     error EquilibriumAffected(int256 assets, int256 minAssets, int256 maxAssets);
     error ReserveAffected(uint256 assets, uint256 minAssets);
+    error TakeNoLongerActive(uint256 time, uint256 deadline);
+    error TakeStillActive(uint256 time, uint256 deadline);
 
     error EventChainMismatch(uint256 chain, uint256 expectedChain);
     error EventEmitterMismatch(address emitter, address expectedEmitter);
@@ -29,9 +53,10 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
 
     error SameEnclavePool(uint256 chain, address pool);
     error NoEnclavePool(uint256 chain);
-    error SameObligorTuner(address obligor, address tuner);
-    error NoObligorTuner(address obligor);
-    error SameFunctionPause(uint8 index, bool pause);
+    error SameEnclaveTakeProvider(uint256 takeChain, address tuneProvider, address giveProvider, address takeProvider);
+    error NoEnclaveTakeProvider(uint256 takeChain, address tuneProvider, address giveProvider);
+    error SameFunctionPause(uint8 index);
+    error SameFunctionUnpause(uint8 index);
     error FunctionPaused(uint8 index);
 
     function decimalsOffset() external view returns (uint8);
@@ -52,57 +77,52 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
 
     function withdrawReserveAssets() external view returns (uint256);
 
-    function borrowState(bytes32 borrowHash) external view returns (uint256);
+    function loanState(bytes32 loanHash) external view returns (LoanState);
+
+    function loanEscrowValue(bytes32 loanHash) external view returns (uint256);
 
     function enclavePool(uint256 chain) external view returns (address);
 
-    function obligorTuner(address obligor) external view returns (address);
+    function enclaveTakeProvider(
+        uint256 takeChain,
+        address tuneProvider,
+        address giveProvider
+    ) external view returns (address);
 
     function functionPause(uint8 index) external view returns (bool);
 
     function convertToEnclaveAssets(uint256 assets) external view returns (uint256);
 
-    function calcBorrowHash(
-        uint256 borrowChain,
-        uint256 borrowEnclaveAssets,
-        address borrowReceiver,
-        uint256 obligateChain,
-        uint256 obligateNonce
-    ) external view returns (bytes32);
+    function calcLoanHash(Loan calldata loan) external view returns (bytes32);
 
-    function previewObligate(
-        uint256 borrowChain,
-        uint256 borrowAssets,
-        address obligor,
-        bytes calldata tunerData
-    ) external view returns (
-        uint256 protocolAssets,
-        int256 influenceAssets,
-        uint256 repayAssets
-    );
+    function tune(TuneParams calldata params) external view returns (TuneResult memory);
 
-    function obligate(
-        uint256 borrowChain,
-        uint256 borrowAssets,
-        address borrowReceiver,
-        address obligor,
-        bytes calldata obligorData_,
-        bytes calldata tunerData
-    ) external; // Pausable #0
+    function give(GiveParams calldata params) external payable; // Pausable #0
 
-    function borrow(
-        uint256 borrowAssets,
-        address borrowReceiver,
-        uint256 obligateChain,
-        uint256 obligateNonce,
-        bytes calldata obligateProof
-    ) external; // Pausable #1
+    function take(TakeParams calldata params) external; // Pausable #1
+
+    function confirm(ConfirmParams calldata params) external; // Pausable #2
+
+    function refuse(RefuseParams calldata params) external; // Pausable #3
+
+    function cancel(CancelParams calldata params) external; // Pausable #4
+
+    // Pausable in ERC-4626:
+    // - deposit/mint: #5
+    // - withdraw/redeem: #6
 
     // Owner functionality
 
     function setEnclavePool(uint256 chain, address pool) external;
 
-    function setObligorTuner(address obligor, address tuner) external;
+    function setEnclaveTakeProvider(
+        uint256 takeChain,
+        address tuneProvider,
+        address giveProvider,
+        address takeProvider
+    ) external;
 
-    function setFunctionPause(uint8 index, bool pause) external;
+    function pauseFunction(uint8 index) external;
+
+    function unpauseFunction(uint8 index) external;
 }

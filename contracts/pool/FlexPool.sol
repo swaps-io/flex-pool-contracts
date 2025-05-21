@@ -6,25 +6,30 @@ import {ERC4626, IERC4626, IERC20Metadata} from "@openzeppelin/contracts/token/E
 import {ERC20Permit, IERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
+import {Multicall, Address} from "@openzeppelin/contracts/utils/Multicall.sol";
 
 import {AssetPermitter} from "../permit/AssetPermitter.sol";
 
-import {ITuner} from "../tuner/interfaces/ITuner.sol";
+import {ITuneProvider, TuneProviderParams, TuneProviderResult} from "../tune/interfaces/ITuneProvider.sol";
 
-import {IObligor} from "../obligor/interfaces/IObligor.sol";
+import {IGiveProvider} from "../give/interfaces/IGiveProvider.sol";
 
-import {IFlexPool, IEventVerifier} from "./interfaces/IFlexPool.sol";
+import {ITakeProvider} from "../take/interfaces/ITakeProvider.sol";
 
-import {BorrowHashLib} from "./libraries/BorrowHashLib.sol";
+import { IFlexPool, IEventVerifier, LoanState, Loan, TuneParams, TuneResult, GiveParams, TakeParams, ConfirmParams,
+    RefuseParams, CancelParams } from "./interfaces/IFlexPool.sol";
+
+import {LoanHashLib} from "./libraries/LoanHashLib.sol";
+import {LoanStateLib} from "./libraries/LoanStateLib.sol";
+import {DeadlineLib} from "./libraries/DeadlineLib.sol";
+import {TakeDeadlineLib} from "./libraries/TakeDeadlineLib.sol";
 
 contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2Step, Multicall {
-    bytes32 private constant OBLIGATE_EVENT_SIGNATURE = keccak256("Obligate(bytes32)");
-    bytes32 private constant BORROW_EVENT_SIGNATURE = keccak256("Borrow(bytes32)");
-
-    uint256 private constant BORROW_STATE_NONE = 0;
-    uint256 private constant BORROW_STATE_OBLIGATED = 1;
-    uint256 private constant BORROW_STATE_BORROWED = 2;
+    bytes32 private constant GIVE_EVENT_SIGNATURE = keccak256("Give(bytes32)");
+    bytes32 private constant TAKE_EVENT_SIGNATURE = keccak256("Take(bytes32)");
+    bytes32 private constant CONFIRM_EVENT_SIGNATURE = keccak256("Confirm(bytes32)");
+    bytes32 private constant REFUSE_EVENT_SIGNATURE = keccak256("Refuse(bytes32)");
+    bytes32 private constant CANCEL_EVENT_SIGNATURE = keccak256("Cancel(bytes32)");
 
     uint8 public immutable override decimalsOffset;
     uint8 public immutable override enclaveDecimalsOffset;
@@ -33,11 +38,12 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     int256 public override equilibriumAssets;
     uint256 public override reserveAssets;
     uint256 public override withdrawReserveAssets;
-    mapping(bytes32 borrowHash => uint256) public override borrowState;
     mapping(uint256 chain => address) public override enclavePool;
-    mapping(address obligor => address) public override obligorTuner;
+    mapping(uint256 takeChain => mapping(address tuneProvider => mapping(address giveProvider => address)))
+        public override enclaveTakeProvider;
 
-    uint256 private _functionPauseBits;
+    mapping(bytes32 loanHash => uint256) public _loanData;
+    uint256 private _functionPauseData;
 
     modifier pausable(uint8 index_) {
         require(!functionPause(index_), FunctionPaused(index_));
@@ -88,104 +94,192 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         return reserveAssets - withdrawReserveAssets;
     }
 
+    function loanState(bytes32 loanHash_) external view override returns (LoanState) {
+        return LoanStateLib.readState(_loanData[loanHash_]);
+    }
+
+    function loanEscrowValue(bytes32 loanHash_) external view override returns (uint256) {
+        return LoanStateLib.readEscrowValue(_loanData[loanHash_]);
+    }
+
     function functionPause(uint8 index_) public view override returns (bool) {
-        return 1 << index_ & _functionPauseBits != 0;
+        return _functionPauseData & _pauseMask(index_) != 0;
     }
 
     function convertToEnclaveAssets(uint256 assets_) public view override returns (uint256) {
         return assets_ * 10 ** enclaveDecimalsOffset;
     }
 
-    function calcBorrowHash(
-        uint256 borrowChain_,
-        uint256 borrowEnclaveAssets_,
-        address borrowReceiver_,
-        uint256 obligateChain_,
-        uint256 obligateNonce_
-    ) external pure override returns (bytes32) {
-        return BorrowHashLib.calc(
-            borrowChain_,
-            borrowEnclaveAssets_,
-            borrowReceiver_,
-            obligateChain_,
-            obligateNonce_
-        );
+    function calcLoanHash(Loan calldata loan_) external pure override returns (bytes32) {
+        return LoanHashLib.calc(loan_);
     }
 
-    function previewObligate(
-        uint256 borrowChain_,
-        uint256 borrowAssets_,
-        address obligor_,
-        bytes calldata tunerData_
-    ) public override view returns (
-        uint256 protocolAssets,
-        int256 influenceAssets,
-        uint256 repayAssets
-    ) {
-        address tuner = obligorTuner[address(obligor_)];
-        require(tuner != address(0), NoObligorTuner(address(obligor_)));
-        (protocolAssets, influenceAssets) = ITuner(tuner).tune(borrowChain_, borrowAssets_, tunerData_);
-        repayAssets = uint256(int256(borrowAssets_ + protocolAssets) + influenceAssets);
-    }
+    function tune(TuneParams memory params_) public view override returns (TuneResult memory result) {
+        TuneProviderResult memory providerResult = ITuneProvider(params_.tuneProvider).tune(TuneProviderParams({
+            giveProvider: params_.giveProvider,
+            giveExecutor: params_.giveExecutor,
+            takeChain: params_.takeChain,
+            takeProvider: params_.takeProvider,
+            takeAssets: params_.takeAssets,
+            takeDeadline: params_.takeDeadline,
+            extraData: params_.tuneExtraData
+        }));
 
-    function obligate(
-        uint256 borrowChain_,
-        uint256 borrowAssets_,
-        address borrowReceiver_,
-        address obligor_,
-        bytes calldata obligorData_,
-        bytes calldata tunerData_
-    ) external override pausable(0) {
-        (/* uint256 protocolAssets */,
-            int256 influenceAssets,
-            uint256 repayAssets
-        ) = previewObligate(borrowChain_, borrowAssets_, obligor_, tunerData_);
+        result.escrowValue = providerResult.escrowValue;
+        result.protocolAssets = providerResult.protocolAssets;
+        result.rebalanceAssets = providerResult.rebalanceAssets;
 
-        uint256 obligateNonce = IObligor(obligor_).obligate(repayAssets, obligorData_);
-
-        bytes32 borrowHash = BorrowHashLib.calc(
-            borrowChain_,
-            convertToEnclaveAssets(borrowAssets_),
-            borrowReceiver_,
-            block.chainid,
-            obligateNonce
-        );
-        _verifyBorrowState(borrowHash, BORROW_STATE_NONE);
-        borrowState[borrowHash] = BORROW_STATE_OBLIGATED;
-
-        _shiftEquilibriumAssets(int256(repayAssets), false, false);
-        _handleInfluence(influenceAssets);
-
-        emit Obligate(borrowHash);
-    }
-
-    function borrow(
-        uint256 borrowAssets_,
-        address borrowReceiver_,
-        uint256 obligateChain_,
-        uint256 obligateNonce_,
-        bytes calldata obligateProof_
-    ) external override pausable(1) {
-        bytes32 borrowHash = BorrowHashLib.calc(
-            block.chainid,
-            convertToEnclaveAssets(borrowAssets_),
-            borrowReceiver_,
-            obligateChain_,
-            obligateNonce_
-        );
-
-        if (obligateChain_ == block.chainid) {
-            _verifyBorrowState(borrowHash, BORROW_STATE_OBLIGATED);
-        } else {
-            _verifyBorrowState(borrowHash, BORROW_STATE_NONE);
-            _verifyObligateEvent(obligateChain_, borrowHash, obligateProof_);
+        result.giveAssets = params_.takeAssets + result.protocolAssets;
+        if (result.rebalanceAssets > 0) {
+            result.giveAssets += uint256(result.rebalanceAssets);
         }
-        borrowState[borrowHash] = BORROW_STATE_BORROWED;
+    }
 
-        _shiftEquilibriumAssets(-int256(borrowAssets_), false, false);
-        _sendAssets(borrowAssets_, borrowReceiver_);
+    function give(GiveParams calldata params_) external payable override pausable(0) {
+        address takeProvider = enclaveTakeProvider[params_.takeChain][params_.tuneProvider][params_.giveProvider];
+        require(
+            takeProvider != address(0),
+            NoEnclaveTakeProvider(params_.takeChain, params_.tuneProvider, params_.giveProvider)
+        );
 
-        emit Borrow(borrowHash);
+        TuneResult memory tuneResult = tune(TuneParams({
+            tuneProvider: params_.tuneProvider,
+            giveProvider: params_.giveProvider,
+            giveExecutor: _msgSender(),
+            takeChain: params_.takeChain,
+            takeProvider: takeProvider,
+            takeAssets: params_.takeAssets,
+            takeDeadline: params_.takeDeadline,
+            tuneExtraData: params_.tuneExtraData
+        }));
+        require(msg.value >= tuneResult.escrowValue, InsufficientEscrowValue(msg.value, tuneResult.escrowValue));
+
+        IGiveProvider(params_.giveProvider).give(tuneResult.giveAssets, params_.providerData);
+
+        bytes32 loanHash = LoanHashLib.calc(Loan({
+            giveChain: block.chainid,
+            giveProvider: params_.giveProvider,
+            giveExecutor: params_.giveExecutor,
+            takeChain: params_.takeChain,
+            takeProvider: takeProvider,
+            takeEnclaveAssets: convertToEnclaveAssets(params_.takeAssets),
+            takeDeadline: params_.takeDeadline,
+            providerDataHash: keccak256(params_.providerData)
+        }));
+
+        _verifyLoanState(loanHash, LoanState.None);
+        _updateLoanState(loanHash, LoanState.Given, msg.value);
+
+        // TODO: update pool assets
+
+        emit Give(loanHash);
+    }
+
+    function take(TakeParams calldata params_) external override pausable(1) {
+        uint256 takeDeadline = TakeDeadlineLib.readTakeDeadline(params_.takeDeadline);
+        require(DeadlineLib.active(takeDeadline), TakeNoLongerActive(DeadlineLib.time(), takeDeadline));
+
+        bytes32 loanHash = LoanHashLib.calc(Loan({
+            giveChain: params_.giveChain,
+            giveProvider: params_.giveProvider,
+            giveExecutor: params_.giveExecutor,
+            takeChain: block.chainid,
+            takeProvider: params_.takeProvider,
+            takeEnclaveAssets: convertToEnclaveAssets(params_.takeAssets),
+            takeDeadline: params_.takeDeadline,
+            providerDataHash: keccak256(params_.providerData)
+        }));
+
+        if (params_.giveChain == block.chainid) {
+            _verifyLoanState(loanHash, LoanState.Given);
+        } else {
+            _verifyLoanState(loanHash, LoanState.None);
+            _verifyPoolEvent(params_.giveChain, GIVE_EVENT_SIGNATURE, loanHash, params_.giveProof);
+        }
+        _updateLoanState(loanHash, LoanState.Taken);
+
+        // TODO: update pool assets
+
+        ITakeProvider(params_.takeProvider).take(params_.takeAssets, params_.providerData);
+
+        emit Take(loanHash);
+    }
+
+    function confirm(ConfirmParams calldata params_) external override pausable(2) {
+        bytes32 loanHash = LoanHashLib.calc(Loan({
+            giveChain: block.chainid,
+            giveProvider: params_.giveProvider,
+            giveExecutor: params_.giveExecutor,
+            takeChain: params_.takeChain,
+            takeProvider: params_.takeProvider,
+            takeEnclaveAssets: convertToEnclaveAssets(params_.takeAssets),
+            takeDeadline: params_.takeDeadline,
+            providerDataHash: params_.providerDataHash
+        }));
+
+        if (params_.takeChain == block.chainid) {
+            _verifyLoanState(loanHash, LoanState.Taken);
+        } else {
+            _verifyLoanState(loanHash, LoanState.Given);
+            _verifyPoolEvent(params_.takeChain, TAKE_EVENT_SIGNATURE, loanHash, params_.takeProof);
+        }
+        _updateLoanState(loanHash, LoanState.Confirmed);
+
+        // TODO: update pool assets
+
+        emit Confirm(loanHash);
+    }
+
+    function refuse(RefuseParams calldata params_) external override pausable(3) {
+        uint256 takeDeadline = TakeDeadlineLib.readTakeDeadline(params_.takeDeadline);
+        require(!DeadlineLib.active(takeDeadline), TakeStillActive(DeadlineLib.time(), takeDeadline));
+
+        bytes32 loanHash = LoanHashLib.calc(Loan({
+            giveChain: params_.giveChain,
+            giveProvider: params_.giveProvider,
+            giveExecutor: params_.giveExecutor,
+            takeChain: block.chainid,
+            takeProvider: params_.takeProvider,
+            takeEnclaveAssets: convertToEnclaveAssets(params_.takeAssets),
+            takeDeadline: params_.takeDeadline,
+            providerDataHash: params_.providerDataHash
+        }));
+
+        // TODO: check all loan state transitions
+        if (params_.giveChain == block.chainid) {
+            _verifyLoanState(loanHash, LoanState.Given);
+        } else {
+            _verifyLoanState(loanHash, LoanState.None);
+        }
+        _updateLoanState(loanHash, LoanState.Refused);
+
+        emit Refuse(loanHash);
+    }
+
+    function cancel(CancelParams calldata params_) external override pausable(4) {
+        // TODO: exclusive deadline logic
+
+        bytes32 loanHash = LoanHashLib.calc(Loan({
+            giveChain: block.chainid,
+            giveProvider: params_.giveProvider,
+            giveExecutor: params_.giveExecutor,
+            takeChain: params_.takeChain,
+            takeProvider: params_.takeProvider,
+            takeEnclaveAssets: convertToEnclaveAssets(params_.takeAssets),
+            takeDeadline: params_.takeDeadline,
+            providerDataHash: params_.providerDataHash
+        }));
+
+        if (params_.takeChain == block.chainid) {
+            _verifyLoanState(loanHash, LoanState.Refused);
+        } else {
+            _verifyLoanState(loanHash, LoanState.Given);
+        }
+        _updateLoanState(loanHash, LoanState.Cancelled);
+
+        // TODO: update pool assets
+
+        emit Cancel(loanHash);
     }
 
     function verifyEvent(
@@ -201,11 +295,12 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         require(data_.length == 0, EventDataMismatch(data_, 0));
 
         bytes32 eventSignature = topics_[0];
-        if (eventSignature == OBLIGATE_EVENT_SIGNATURE) {
-            _verifyBorrowState(topics_[1], BORROW_STATE_OBLIGATED);
-        } else if (eventSignature == BORROW_EVENT_SIGNATURE) {
-            _verifyBorrowState(topics_[1], BORROW_STATE_BORROWED);
+        if (eventSignature == GIVE_EVENT_SIGNATURE) {
+            _verifyLoanState(topics_[1], LoanState.Given);
+        } else if (eventSignature == TAKE_EVENT_SIGNATURE) {
+            _verifyLoanState(topics_[1], LoanState.Taken);
         } else {
+            // TODO: other events & multiple accepted states
             revert EventSignatureMismatch(eventSignature);
         }
     }
@@ -219,19 +314,31 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         emit EnclavePoolUpdate(chain_, oldPool, pool_);
     }
 
-    function setObligorTuner(address obligor_, address tuner_) external override onlyOwner {
-        address oldTuner = obligorTuner[obligor_];
-        require(tuner_ != oldTuner, SameObligorTuner(obligor_, tuner_));
-        obligorTuner[obligor_] = tuner_;
-        emit ObligorTunerUpdate(obligor_, oldTuner, tuner_);
+    function setEnclaveTakeProvider(
+        uint256 takeChain_,
+        address tuneProvider_,
+        address giveProvider_,
+        address takeProvider_
+    ) external override onlyOwner {
+        address oldTakeProvider = enclaveTakeProvider[takeChain_][tuneProvider_][giveProvider_];
+        require(
+            takeProvider_ != oldTakeProvider,
+            SameEnclaveTakeProvider(takeChain_, tuneProvider_, giveProvider_, takeProvider_)
+        );
+        enclaveTakeProvider[takeChain_][tuneProvider_][giveProvider_] = takeProvider_;
+        emit EnclaveTakeProviderUpdate(takeChain_, tuneProvider_, giveProvider_, oldTakeProvider, takeProvider_);
     }
 
-    function setFunctionPause(uint8 index_, bool pause_) external override onlyOwner {
-        uint256 mask = 1 << index_;
-        uint256 bits = _functionPauseBits;
-        require(pause_ != (bits & mask != 0), SameFunctionPause(index_, pause_));
-        _functionPauseBits = pause_ ? bits | mask : bits & ~mask;
-        emit FunctionPauseUpdate(index_, pause_);
+    function pauseFunction(uint8 index_) external override onlyOwner {
+        require(_functionPauseData & _pauseMask(index_) == 0, SameFunctionPause(index_));
+        _functionPauseData |= _pauseMask(index_);
+        emit FunctionPause(index_);
+    }
+
+    function unpauseFunction(uint8 index_) external override onlyOwner {
+        require(_functionPauseData & _pauseMask(index_) != 0, SameFunctionUnpause(index_));
+        _functionPauseData &= ~_pauseMask(index_);
+        emit FunctionUnpause(index_);
     }
 
     // ---
@@ -245,7 +352,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         address receiver_,
         uint256 assets_,
         uint256 shares_
-    ) internal override pausable(2) {
+    ) internal override pausable(5) {
         ERC4626._deposit(caller_, receiver_, assets_, shares_);
     }
 
@@ -255,50 +362,48 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         address owner_,
         uint256 assets_,
         uint256 shares_
-    ) internal override pausable(3) {
+    ) internal override pausable(6) {
         ERC4626._withdraw(caller_, receiver_, owner_, assets_, shares_);
     }
 
     // ---
 
-    function _verifyBorrowState(bytes32 borrowHash_, uint256 expectedState_) private view {
-        uint256 state = borrowState[borrowHash_];
-        require(state == expectedState_, InvalidBorrowState(borrowHash_, state, expectedState_));
+    function _pauseMask(uint8 index_) private pure returns (uint256) {
+        return 1 << index_;
+    }
+
+    function _verifyLoanState(bytes32 loanHash_, LoanState expectedState_) private view {
+        LoanState state = LoanStateLib.readState(_loanData[loanHash_]);
+        require(state == expectedState_, InvalidLoanState(loanHash_, state, expectedState_));
+    }
+
+    function _updateLoanState(bytes32 loanHash_, LoanState state_) private {
+        _loanData[loanHash_] = LoanStateLib.makeData(state_, LoanStateLib.readEscrowValue(_loanData[loanHash_]));
+    }
+
+    function _updateLoanState(bytes32 loanHash_, LoanState state_, uint256 escrowValue_) private {
+        _loanData[loanHash_] = LoanStateLib.makeData(state_, escrowValue_);
     }
 
     function _verifyReserveAssets() private view {
         require(currentAssets() >= reserveAssets, ReserveAffected(currentAssets(), reserveAssets));
     }
 
-    function _verifyObligateEvent(uint256 chain_, bytes32 borrowHash_, bytes calldata proof_) private {
+    function _verifyPoolEvent(uint256 chain_, bytes32 topic0_, bytes32 topic1_, bytes calldata proof_) private {
         address emitter = enclavePool[chain_];
         require(emitter != address(0), NoEnclavePool(chain_));
         bytes32[] memory topics = new bytes32[](2);
-        topics[0] = OBLIGATE_EVENT_SIGNATURE;
-        topics[1] = borrowHash_;
+        topics[0] = topic0_;
+        topics[1] = topic1_;
         verifier.verifyEvent(chain_, emitter, topics, "", proof_);
-    }
-
-    function _shiftEquilibriumAssets(int256 assets_, bool positive_, bool negative_) private {
-        int256 newAssets = equilibriumAssets + assets_;
-        if (positive_) {
-            require(newAssets >= 0, EquilibriumAffected(newAssets, 0, type(int256).max));
-        }
-        if (negative_) {
-            require(newAssets <= 0, EquilibriumAffected(newAssets, type(int256).min, 0));
-        }
-        equilibriumAssets = newAssets;
-    }
-
-    function _handleInfluence(int256 assets_) private {
-        // TODO: implement
-        if (assets_ > 0) {
-            reserveAssets += uint256(assets_);
-        }
     }
 
     function _sendAssets(uint256 assets_, address receiver_) private {
         SafeERC20.safeTransfer(IERC20(asset()), receiver_, assets_);
         _verifyReserveAssets();
+    }
+
+    function _sendValue(uint256 value_, address receiver_) private {
+        Address.sendValue(payable(receiver_), value_);
     }
 }

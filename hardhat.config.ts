@@ -9,7 +9,7 @@ const config: HardhatUserConfig = {
       viaIR: true,
       optimizer: {
         enabled: true,
-        runs: 1_000_000,
+        runs: 100_000,
       },
     },
   },
@@ -20,8 +20,9 @@ const config: HardhatUserConfig = {
     strict: true,
     only: [
       'contracts/pool/FlexPool.sol',
-      'contracts/obligor/transfer/TransferObligor.sol',
-      'contracts/tuner/simple/SimpleTuner.sol',
+      'contracts/give/transfer/TransferGiveProvider.sol',
+      'contracts/take/transfer/TransferTakeProvider.sol',
+      'contracts/tune/linear/LinearTuneProvider.sol',
     ],
   },
 };

@@ -18,7 +18,8 @@ import {ConfirmParams} from "../structs/ConfirmParams.sol";
 import {RefuseParams} from "../structs/RefuseParams.sol";
 import {CancelParams} from "../structs/CancelParams.sol";
 
-import {LoanState} from "../enums/LoanState.sol";
+import {LoanGiveState} from "../enums/LoanGiveState.sol";
+import {LoanTakeState} from "../enums/LoanTakeState.sol";
 
 interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
     event Give(bytes32 indexed loanHash);
@@ -39,11 +40,13 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
     event FunctionUnpause(uint8 indexed index);
 
     error InsufficientEscrowValue(uint256 value, uint256 minValue);
-    error InvalidLoanState(bytes32 loanHash, LoanState state, LoanState expectedState);
+    error InvalidLoanGiveState(bytes32 loanHash, LoanGiveState state, LoanGiveState expectedState);
+    error InvalidLoanTakeState(bytes32 loanHash, LoanTakeState state, LoanTakeState expectedState);
     error EquilibriumAffected(int256 assets, int256 minAssets, int256 maxAssets);
     error ReserveAffected(uint256 assets, uint256 minAssets);
     error TakeNoLongerActive(uint256 time, uint256 deadline);
     error TakeStillActive(uint256 time, uint256 deadline);
+    error ExclusiveCancelStillActive(address caller, address canceller, uint256 time, uint256 deadline);
 
     error EventChainMismatch(uint256 chain, uint256 expectedChain);
     error EventEmitterMismatch(address emitter, address expectedEmitter);
@@ -77,7 +80,9 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
 
     function withdrawReserveAssets() external view returns (uint256);
 
-    function loanState(bytes32 loanHash) external view returns (LoanState);
+    function loanGiveState(bytes32 loanHash) external view returns (LoanGiveState);
+
+    function loanTakeState(bytes32 loanHash) external view returns (LoanTakeState);
 
     function loanEscrowValue(bytes32 loanHash) external view returns (uint256);
 

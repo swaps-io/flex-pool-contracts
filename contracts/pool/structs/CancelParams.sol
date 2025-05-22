@@ -10,4 +10,5 @@ struct CancelParams {
     uint256 takeAssets;
     uint256 takeDeadline;
     bytes32 providerDataHash;
+    bytes refuseProof;
 }

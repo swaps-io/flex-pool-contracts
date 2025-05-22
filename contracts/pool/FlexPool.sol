@@ -16,11 +16,12 @@ import {IGiveProvider} from "../give/interfaces/IGiveProvider.sol";
 
 import {ITakeProvider} from "../take/interfaces/ITakeProvider.sol";
 
-import { IFlexPool, IEventVerifier, LoanState, Loan, TuneParams, TuneResult, GiveParams, TakeParams, ConfirmParams,
-    RefuseParams, CancelParams } from "./interfaces/IFlexPool.sol";
+import { IFlexPool, IEventVerifier, Loan, LoanTakeState, LoanGiveState, TuneParams, TuneResult, GiveParams, TakeParams,
+    ConfirmParams, RefuseParams, CancelParams } from "./interfaces/IFlexPool.sol";
 
 import {LoanHashLib} from "./libraries/LoanHashLib.sol";
-import {LoanStateLib} from "./libraries/LoanStateLib.sol";
+import {LoanStateDataLib} from "./libraries/LoanStateDataLib.sol";
+import {FunctionPauseDataLib} from "./libraries/FunctionPauseDataLib.sol";
 import {DeadlineLib} from "./libraries/DeadlineLib.sol";
 import {TakeDeadlineLib} from "./libraries/TakeDeadlineLib.sol";
 
@@ -42,7 +43,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     mapping(uint256 takeChain => mapping(address tuneProvider => mapping(address giveProvider => address)))
         public override enclaveTakeProvider;
 
-    mapping(bytes32 loanHash => uint256) public _loanData;
+    mapping(bytes32 loanHash => uint256) public _loanStateData;
     uint256 private _functionPauseData;
 
     modifier pausable(uint8 index_) {
@@ -94,16 +95,20 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         return reserveAssets - withdrawReserveAssets;
     }
 
-    function loanState(bytes32 loanHash_) external view override returns (LoanState) {
-        return LoanStateLib.readState(_loanData[loanHash_]);
+    function loanGiveState(bytes32 loanHash_) external view override returns (LoanGiveState) {
+        return LoanStateDataLib.readGiveState(_loanStateData[loanHash_]);
+    }
+
+    function loanTakeState(bytes32 loanHash_) external view override returns (LoanTakeState) {
+        return LoanStateDataLib.readTakeState(_loanStateData[loanHash_]);
     }
 
     function loanEscrowValue(bytes32 loanHash_) external view override returns (uint256) {
-        return LoanStateLib.readEscrowValue(_loanData[loanHash_]);
+        return LoanStateDataLib.readEscrowValue(_loanStateData[loanHash_]);
     }
 
     function functionPause(uint8 index_) public view override returns (bool) {
-        return _functionPauseData & _pauseMask(index_) != 0;
+        return FunctionPauseDataLib.readPause(_functionPauseData, index_);
     }
 
     function convertToEnclaveAssets(uint256 assets_) public view override returns (uint256) {
@@ -154,8 +159,6 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         }));
         require(msg.value >= tuneResult.escrowValue, InsufficientEscrowValue(msg.value, tuneResult.escrowValue));
 
-        IGiveProvider(params_.giveProvider).give(tuneResult.giveAssets, params_.providerData);
-
         bytes32 loanHash = LoanHashLib.calc(Loan({
             giveChain: block.chainid,
             giveProvider: params_.giveProvider,
@@ -167,8 +170,12 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             providerDataHash: keccak256(params_.providerData)
         }));
 
-        _verifyLoanState(loanHash, LoanState.None);
-        _updateLoanState(loanHash, LoanState.Given, msg.value);
+        uint256 stateData = _loanStateData[loanHash];
+        _verifyGiveState(stateData, LoanGiveState.None, loanHash);
+        stateData = LoanStateDataLib.writeEscrowValue(stateData, msg.value);
+        _loanStateData[loanHash] = LoanStateDataLib.writeGiveState(stateData, LoanGiveState.Given);
+
+        IGiveProvider(params_.giveProvider).give(tuneResult.giveAssets, params_.providerData);
 
         // TODO: update pool assets
 
@@ -190,13 +197,14 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             providerDataHash: keccak256(params_.providerData)
         }));
 
+        uint256 stateData = _loanStateData[loanHash];
+        _verifyTakeState(stateData, LoanTakeState.None, loanHash);
         if (params_.giveChain == block.chainid) {
-            _verifyLoanState(loanHash, LoanState.Given);
+            _verifyGiveState(stateData, LoanGiveState.Given, loanHash);
         } else {
-            _verifyLoanState(loanHash, LoanState.None);
             _verifyPoolEvent(params_.giveChain, GIVE_EVENT_SIGNATURE, loanHash, params_.giveProof);
         }
-        _updateLoanState(loanHash, LoanState.Taken);
+        _loanStateData[loanHash] = LoanStateDataLib.writeTakeState(stateData, LoanTakeState.Taken);
 
         // TODO: update pool assets
 
@@ -217,15 +225,16 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             providerDataHash: params_.providerDataHash
         }));
 
+        uint256 stateData = _loanStateData[loanHash];
+        _verifyGiveState(stateData, LoanGiveState.Given, loanHash);
         if (params_.takeChain == block.chainid) {
-            _verifyLoanState(loanHash, LoanState.Taken);
+            _verifyTakeState(stateData, LoanTakeState.Taken, loanHash);
         } else {
-            _verifyLoanState(loanHash, LoanState.Given);
             _verifyPoolEvent(params_.takeChain, TAKE_EVENT_SIGNATURE, loanHash, params_.takeProof);
         }
-        _updateLoanState(loanHash, LoanState.Confirmed);
+        _loanStateData[loanHash] = LoanStateDataLib.writeGiveState(stateData, LoanGiveState.Confirmed);
 
-        // TODO: update pool assets
+        _sendValue(LoanStateDataLib.readEscrowValue(stateData), params_.giveExecutor);
 
         emit Confirm(loanHash);
     }
@@ -245,19 +254,21 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             providerDataHash: params_.providerDataHash
         }));
 
-        // TODO: check all loan state transitions
-        if (params_.giveChain == block.chainid) {
-            _verifyLoanState(loanHash, LoanState.Given);
-        } else {
-            _verifyLoanState(loanHash, LoanState.None);
-        }
-        _updateLoanState(loanHash, LoanState.Refused);
+        uint256 stateData = _loanStateData[loanHash];
+        _verifyTakeState(stateData, LoanTakeState.None, loanHash);
+        _loanStateData[loanHash] = LoanStateDataLib.writeTakeState(stateData, LoanTakeState.Refused);
 
         emit Refuse(loanHash);
     }
 
     function cancel(CancelParams calldata params_) external override pausable(4) {
-        // TODO: exclusive deadline logic
+        uint256 exclusiveDeadline = TakeDeadlineLib.readExclusiveCancelDeadline(params_.takeDeadline);
+        if (DeadlineLib.active(exclusiveDeadline)) {
+            require(
+                _msgSender() == params_.giveExecutor,
+                ExclusiveCancelStillActive(_msgSender(), params_.giveExecutor, DeadlineLib.time(), exclusiveDeadline)
+            );
+        }
 
         bytes32 loanHash = LoanHashLib.calc(Loan({
             giveChain: block.chainid,
@@ -270,14 +281,17 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             providerDataHash: params_.providerDataHash
         }));
 
+        uint256 stateData = _loanStateData[loanHash];
+        _verifyGiveState(stateData, LoanGiveState.Given, loanHash);
         if (params_.takeChain == block.chainid) {
-            _verifyLoanState(loanHash, LoanState.Refused);
+            _verifyTakeState(stateData, LoanTakeState.Refused, loanHash);
         } else {
-            _verifyLoanState(loanHash, LoanState.Given);
+            _verifyPoolEvent(params_.takeChain, REFUSE_EVENT_SIGNATURE, loanHash, params_.refuseProof);
         }
-        _updateLoanState(loanHash, LoanState.Cancelled);
+        _loanStateData[loanHash] = LoanStateDataLib.writeGiveState(stateData, LoanGiveState.Cancelled);
 
         // TODO: update pool assets
+        _sendValue(LoanStateDataLib.readEscrowValue(stateData), _msgSender());
 
         emit Cancel(loanHash);
     }
@@ -287,7 +301,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         address emitter_,
         bytes32[] calldata topics_,
         bytes calldata data_,
-        bytes calldata /* proof_ */
+        bytes calldata proof_
     ) external view override {
         require(chain_ == block.chainid, EventChainMismatch(chain_, block.chainid));
         require(emitter_ == address(this), EventEmitterMismatch(emitter_, address(this)));
@@ -295,12 +309,27 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         require(data_.length == 0, EventDataMismatch(data_, 0));
 
         bytes32 eventSignature = topics_[0];
+        bytes32 loanHash = topics_[1];
+        uint256 stateData = _loanStateData[loanHash];
+
         if (eventSignature == GIVE_EVENT_SIGNATURE) {
-            _verifyLoanState(topics_[1], LoanState.Given);
+            uint256 giveVariant = proof_.length > 0 ? uint256(bytes32(proof_[0:32])) : 0;
+            if (giveVariant == uint256(LoanGiveState.Confirmed)) {
+                _verifyGiveState(stateData, LoanGiveState.Confirmed, loanHash);
+            } else if (giveVariant == uint256(LoanGiveState.Cancelled)) {
+                _verifyGiveState(stateData, LoanGiveState.Cancelled, loanHash);
+            } else {
+                _verifyGiveState(stateData, LoanGiveState.Given, loanHash);
+            }
         } else if (eventSignature == TAKE_EVENT_SIGNATURE) {
-            _verifyLoanState(topics_[1], LoanState.Taken);
+            _verifyTakeState(stateData, LoanTakeState.Taken, loanHash);
+        } else if (eventSignature == CONFIRM_EVENT_SIGNATURE) {
+            _verifyGiveState(stateData, LoanGiveState.Confirmed, loanHash);
+        } else if (eventSignature == REFUSE_EVENT_SIGNATURE) {
+            _verifyTakeState(stateData, LoanTakeState.Refused, loanHash);
+        } else if (eventSignature == CANCEL_EVENT_SIGNATURE) {
+            _verifyGiveState(stateData, LoanGiveState.Cancelled, loanHash);
         } else {
-            // TODO: other events & multiple accepted states
             revert EventSignatureMismatch(eventSignature);
         }
     }
@@ -330,14 +359,16 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     }
 
     function pauseFunction(uint8 index_) external override onlyOwner {
-        require(_functionPauseData & _pauseMask(index_) == 0, SameFunctionPause(index_));
-        _functionPauseData |= _pauseMask(index_);
+        uint256 pauseData = _functionPauseData;
+        require(!FunctionPauseDataLib.readPause(pauseData, index_), SameFunctionPause(index_));
+        _functionPauseData = FunctionPauseDataLib.writePause(pauseData, index_);
         emit FunctionPause(index_);
     }
 
     function unpauseFunction(uint8 index_) external override onlyOwner {
-        require(_functionPauseData & _pauseMask(index_) != 0, SameFunctionUnpause(index_));
-        _functionPauseData &= ~_pauseMask(index_);
+        uint256 pauseData = _functionPauseData;
+        require(FunctionPauseDataLib.readPause(pauseData, index_), SameFunctionUnpause(index_));
+        _functionPauseData = FunctionPauseDataLib.writeUnpause(pauseData, index_);
         emit FunctionUnpause(index_);
     }
 
@@ -368,21 +399,14 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
 
     // ---
 
-    function _pauseMask(uint8 index_) private pure returns (uint256) {
-        return 1 << index_;
+    function _verifyGiveState(uint256 stateData_, LoanGiveState expectedState_, bytes32 loanHash_) private pure {
+        LoanGiveState state = LoanStateDataLib.readGiveState(stateData_);
+        require(state == expectedState_, InvalidLoanGiveState(loanHash_, state, expectedState_));
     }
 
-    function _verifyLoanState(bytes32 loanHash_, LoanState expectedState_) private view {
-        LoanState state = LoanStateLib.readState(_loanData[loanHash_]);
-        require(state == expectedState_, InvalidLoanState(loanHash_, state, expectedState_));
-    }
-
-    function _updateLoanState(bytes32 loanHash_, LoanState state_) private {
-        _loanData[loanHash_] = LoanStateLib.makeData(state_, LoanStateLib.readEscrowValue(_loanData[loanHash_]));
-    }
-
-    function _updateLoanState(bytes32 loanHash_, LoanState state_, uint256 escrowValue_) private {
-        _loanData[loanHash_] = LoanStateLib.makeData(state_, escrowValue_);
+    function _verifyTakeState(uint256 stateData_, LoanTakeState expectedState_, bytes32 loanHash_) private pure {
+        LoanTakeState state = LoanStateDataLib.readTakeState(stateData_);
+        require(state == expectedState_, InvalidLoanTakeState(loanHash_, state, expectedState_));
     }
 
     function _verifyReserveAssets() private view {

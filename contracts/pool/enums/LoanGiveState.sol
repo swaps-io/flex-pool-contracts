@@ -2,11 +2,9 @@
 
 pragma solidity ^0.8.26;
 
-enum LoanState {
+enum LoanGiveState {
     None,
     Given,
-    Taken,
     Confirmed,
-    Refused,
     Cancelled
 }

@@ -6,6 +6,8 @@ library TakeDeadlineLib {
     uint256 private constant TAKE_DEADLINE_BITS = 128;
     uint256 private constant TAKE_DEADLINE_MASK = (1 << TAKE_DEADLINE_BITS) - 1;
 
+    // Read
+
     function readTakeDeadline(uint256 takeDeadline_) internal pure returns (uint256) {
         return takeDeadline_ & TAKE_DEADLINE_MASK;
     }

@@ -43,7 +43,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
     mapping(uint256 takeChain => mapping(address tuneProvider => mapping(address giveProvider => address)))
         public override enclaveTakeProvider;
 
-    mapping(bytes32 loanHash => uint256) public _loanStateData;
+    mapping(bytes32 loanHash => uint256) private _loanStateData;
     uint256 private _functionPauseData;
 
     modifier pausable(uint8 index_) {

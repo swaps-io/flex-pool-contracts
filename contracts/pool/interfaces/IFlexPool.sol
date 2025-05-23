@@ -42,7 +42,6 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
     error InsufficientEscrowValue(uint256 value, uint256 minValue);
     error InvalidLoanGiveState(bytes32 loanHash, LoanGiveState state, LoanGiveState expectedState);
     error InvalidLoanTakeState(bytes32 loanHash, LoanTakeState state, LoanTakeState expectedState);
-    error EquilibriumAffected(int256 assets, int256 minAssets, int256 maxAssets);
     error ReserveAffected(uint256 assets, uint256 minAssets);
     error TakeNoLongerActive(uint256 time, uint256 deadline);
     error TakeStillActive(uint256 time, uint256 deadline);

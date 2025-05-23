@@ -29,7 +29,7 @@ interface ILinearTuneProvider is ITuneProvider, IPoolAware {
 
     function protocolAssetsPercent() external view returns (uint256);
 
-    function rebalanceAssetsConstant() external view returns (int256);
+    function rebalanceAssetsConstant() external view returns (uint256);
 
     function rebalanceAssetsPercent() external view returns (uint256);
 }

@@ -6,6 +6,7 @@ struct RefuseParams {
     uint256 giveChain;
     address giveProvider;
     address giveExecutor;
+    uint256 giveRebalanceAssets;
     address takeProvider;
     uint256 takeAssets;
     uint256 takeDeadline;

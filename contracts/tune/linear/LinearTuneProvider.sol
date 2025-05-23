@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.26;
 
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
 import {PoolAware, IFlexPool} from "../../aware/PoolAware.sol";
 
 import {TakeDeadlineLib} from "../../pool/libraries/TakeDeadlineLib.sol";
@@ -12,7 +10,7 @@ import {DeadlineLib} from "../../pool/libraries/DeadlineLib.sol";
 import {TuneProviderParams} from "../structs/TuneProviderParams.sol";
 import {TuneProviderResult} from "../structs/TuneProviderResult.sol";
 
-import {PercentLib} from "../libraries/PercentLib.sol";
+import {PercentLib, Math} from "../libraries/PercentLib.sol";
 
 import {ILinearTuneProvider} from "./interfaces/ILinearTuneProvider.sol";
 
@@ -28,7 +26,7 @@ contract LinearTuneProvider is ILinearTuneProvider, PoolAware {
     uint256 public immutable override escrowAssetsConvertPercent;
     uint256 public immutable override protocolAssetsConstant;
     uint256 public immutable override protocolAssetsPercent;
-    int256 public immutable override rebalanceAssetsConstant;
+    uint256 public immutable override rebalanceAssetsConstant;
     uint256 public immutable override rebalanceAssetsPercent;
 
     constructor(LinearTuneProviderParams memory params_)
@@ -71,12 +69,7 @@ contract LinearTuneProvider is ILinearTuneProvider, PoolAware {
                 MaxTakeDeadlineTimeExceeded(takeDeadlineTime, maxTakeDeadlineTime)
             );
 
-            timeAssets += Math.mulDiv(
-                takeDeadlineTime,
-                maxTakeDeadlineTimePercent,
-                maxTakeDeadlineTime,
-                Math.Rounding.Ceil
-            );
+            timeAssets += PercentLib.calcPercent(maxTakeDeadlineTime - takeDeadlineTime, maxTakeDeadlineTimePercent);
         }
 
         if (maxExclusiveCancelTimePercent > 0) {
@@ -86,39 +79,28 @@ contract LinearTuneProvider is ILinearTuneProvider, PoolAware {
                 MaxExclusiveCancelTimeExceeded(exclusiveCancelTime, maxExclusiveCancelTime)
             );
 
-            timeAssets += Math.mulDiv(
-                exclusiveCancelTime,
-                maxExclusiveCancelTimePercent,
-                maxExclusiveCancelTime,
-                Math.Rounding.Ceil
-            );
+            timeAssets += PercentLib.calcPercent(maxExclusiveCancelTime - exclusiveCancelTime, maxExclusiveCancelTimePercent);
         }
     }
 
     function _tuneEscrowValue(uint256 timeAssets_) private view returns (uint256 escrowValue) {
-        escrowValue = escrowValueConstant;
-        if (escrowValuePercent > 0 && escrowAssetsConvertPercent > 0) {
-            uint256 escrowAssets = PercentLib.calcPercent(timeAssets_, escrowAssetsConvertPercent);
-            escrowValue += PercentLib.calcPercent(escrowAssets, escrowValuePercent);
-        }
+        return escrowValueConstant + PercentLib.calcPercent(
+            PercentLib.calcPercent(timeAssets_, escrowAssetsConvertPercent),
+            escrowValuePercent
+        );
     }
 
     function _tuneProtocolAssets(uint256 timeAssets_) private view returns (uint256 protocolAssets) {
-        protocolAssets = protocolAssetsConstant;
-        if (protocolAssetsPercent > 0) {
-            protocolAssets += PercentLib.calcPercent(timeAssets_, protocolAssetsPercent);
-        }
+        return protocolAssetsConstant + PercentLib.calcPercent(timeAssets_, protocolAssetsPercent);
     }
 
-    function _tuneRebalanceAssets(uint256 takeAssets_) private view returns (int256 rebalanceAssets) {
+    function _tuneRebalanceAssets(uint256 takeAssets_) private view returns (uint256 rebalanceAssets) {
         rebalanceAssets = rebalanceAssetsConstant;
         if (rebalanceAssetsPercent > 0) {
             int256 affectedEquilibrium = pool.equilibriumAssets() + int256(takeAssets_);
             if (affectedEquilibrium > 0) {
                 uint256 equilibriumRebalance = Math.min(uint256(affectedEquilibrium), takeAssets_);
-                if (equilibriumRebalance > 0) {
-                    rebalanceAssets += int256(PercentLib.calcPercent(equilibriumRebalance, rebalanceAssetsPercent));
-                }
+                rebalanceAssets += PercentLib.calcPercent(equilibriumRebalance, rebalanceAssetsPercent);
             }
         }
     }

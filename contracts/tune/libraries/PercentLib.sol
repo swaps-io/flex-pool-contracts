@@ -8,6 +8,7 @@ library PercentLib {
     uint256 internal constant HUNDRED_PERCENT = 100 ether;
 
     function calcPercent(uint256 value_, uint256 percent_) internal pure returns (uint256) {
+        if (value_ == 0 || percent_ == 0) return 0;
         return Math.mulDiv(value_, percent_, HUNDRED_PERCENT, Math.Rounding.Ceil);
     }
 }

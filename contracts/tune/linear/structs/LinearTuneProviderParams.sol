@@ -13,6 +13,6 @@ struct LinearTuneProviderParams {
     uint256 escrowAssetsConvertPercent;
     uint256 protocolAssetsConstant;
     uint256 protocolAssetsPercent;
-    int256 rebalanceAssetsConstant;
+    uint256 rebalanceAssetsConstant;
     uint256 rebalanceAssetsPercent;
 }

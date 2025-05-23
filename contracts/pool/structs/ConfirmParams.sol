@@ -5,6 +5,7 @@ pragma solidity ^0.8.26;
 struct ConfirmParams {
     address giveProvider;
     address giveExecutor;
+    uint256 giveRebalanceAssets;
     uint256 takeChain;
     address takeProvider;
     uint256 takeAssets;

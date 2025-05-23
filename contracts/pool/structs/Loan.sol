@@ -8,6 +8,7 @@ struct Loan {
     uint256 giveChain;
     address giveProvider;
     address giveExecutor;
+    uint256 giveRebalanceAssets;
     uint256 takeChain;
     address takeProvider;
     uint256 takeEnclaveAssets;

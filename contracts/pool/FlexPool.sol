@@ -7,6 +7,7 @@ import {ERC20Permit, IERC20Permit, ERC20} from "@openzeppelin/contracts/token/ER
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Multicall, Address} from "@openzeppelin/contracts/utils/Multicall.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {AssetPermitter} from "../permit/AssetPermitter.sol";
 
@@ -133,11 +134,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         result.escrowValue = providerResult.escrowValue;
         result.protocolAssets = providerResult.protocolAssets;
         result.rebalanceAssets = providerResult.rebalanceAssets;
-
-        result.giveAssets = params_.takeAssets + result.protocolAssets;
-        if (result.rebalanceAssets > 0) {
-            result.giveAssets += uint256(result.rebalanceAssets);
-        }
+        result.giveAssets = params_.takeAssets + result.protocolAssets + result.rebalanceAssets;
     }
 
     function give(GiveParams calldata params_) external payable override pausable(0) {
@@ -163,6 +160,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             giveChain: block.chainid,
             giveProvider: params_.giveProvider,
             giveExecutor: params_.giveExecutor,
+            giveRebalanceAssets: tuneResult.rebalanceAssets,
             takeChain: params_.takeChain,
             takeProvider: takeProvider,
             takeEnclaveAssets: convertToEnclaveAssets(params_.takeAssets),
@@ -175,9 +173,11 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         stateData = LoanStateDataLib.writeEscrowValue(stateData, msg.value);
         _loanStateData[loanHash] = LoanStateDataLib.writeGiveState(stateData, LoanGiveState.Given);
 
-        IGiveProvider(params_.giveProvider).give(tuneResult.giveAssets, params_.providerData);
+        equilibriumAssets += int256(params_.takeAssets);
+        reserveAssets += tuneResult.rebalanceAssets;
+        _verifyReserveAssets();
 
-        // TODO: update pool assets
+        IGiveProvider(params_.giveProvider).give(tuneResult.giveAssets, params_.providerData);
 
         emit Give(loanHash);
     }
@@ -190,6 +190,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             giveChain: params_.giveChain,
             giveProvider: params_.giveProvider,
             giveExecutor: params_.giveExecutor,
+            giveRebalanceAssets: params_.giveRebalanceAssets,
             takeChain: block.chainid,
             takeProvider: params_.takeProvider,
             takeEnclaveAssets: convertToEnclaveAssets(params_.takeAssets),
@@ -206,9 +207,18 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         }
         _loanStateData[loanHash] = LoanStateDataLib.writeTakeState(stateData, LoanTakeState.Taken);
 
-        // TODO: update pool assets
+        uint256 rebalanceReward = 0;
+        if (equilibriumAssets > 0) {
+            uint256 equilibriumRebalance = Math.min(uint256(equilibriumAssets), params_.takeAssets);
+            rebalanceReward = Math.mulDiv(rebalanceReserveAssets(), equilibriumRebalance, uint256(equilibriumAssets));
+            reserveAssets -= rebalanceReward;
+        }
 
-        ITakeProvider(params_.takeProvider).take(params_.takeAssets, params_.providerData);
+        equilibriumAssets -= int256(params_.takeAssets);
+        uint256 takeAssets = params_.takeAssets + rebalanceReward;
+        _sendAssets(takeAssets, params_.takeProvider);
+
+        ITakeProvider(params_.takeProvider).take(takeAssets, params_.providerData);
 
         emit Take(loanHash);
     }
@@ -218,6 +228,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             giveChain: block.chainid,
             giveProvider: params_.giveProvider,
             giveExecutor: params_.giveExecutor,
+            giveRebalanceAssets: params_.giveRebalanceAssets,
             takeChain: params_.takeChain,
             takeProvider: params_.takeProvider,
             takeEnclaveAssets: convertToEnclaveAssets(params_.takeAssets),
@@ -247,6 +258,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             giveChain: params_.giveChain,
             giveProvider: params_.giveProvider,
             giveExecutor: params_.giveExecutor,
+            giveRebalanceAssets: params_.giveRebalanceAssets,
             takeChain: block.chainid,
             takeProvider: params_.takeProvider,
             takeEnclaveAssets: convertToEnclaveAssets(params_.takeAssets),
@@ -274,6 +286,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
             giveChain: block.chainid,
             giveProvider: params_.giveProvider,
             giveExecutor: params_.giveExecutor,
+            giveRebalanceAssets: params_.giveRebalanceAssets,
             takeChain: params_.takeChain,
             takeProvider: params_.takeProvider,
             takeEnclaveAssets: convertToEnclaveAssets(params_.takeAssets),
@@ -290,7 +303,10 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         }
         _loanStateData[loanHash] = LoanStateDataLib.writeGiveState(stateData, LoanGiveState.Cancelled);
 
-        // TODO: update pool assets
+        equilibriumAssets -= int256(params_.takeAssets);
+        reserveAssets -= params_.giveRebalanceAssets;
+        _verifyReserveAssets();
+
         _sendValue(LoanStateDataLib.readEscrowValue(stateData), _msgSender());
 
         emit Cancel(loanHash);

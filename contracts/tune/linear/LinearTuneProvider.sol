@@ -69,7 +69,10 @@ contract LinearTuneProvider is ILinearTuneProvider, PoolAware {
                 MaxTakeDeadlineTimeExceeded(takeDeadlineTime, maxTakeDeadlineTime)
             );
 
-            timeAssets += PercentLib.calcPercent(maxTakeDeadlineTime - takeDeadlineTime, maxTakeDeadlineTimePercent);
+            timeAssets += PercentLib.calcPercent(
+                maxTakeDeadlineTime - takeDeadlineTime,
+                maxTakeDeadlineTimePercent
+            );
         }
 
         if (maxExclusiveCancelTimePercent > 0) {
@@ -79,7 +82,10 @@ contract LinearTuneProvider is ILinearTuneProvider, PoolAware {
                 MaxExclusiveCancelTimeExceeded(exclusiveCancelTime, maxExclusiveCancelTime)
             );
 
-            timeAssets += PercentLib.calcPercent(maxExclusiveCancelTime - exclusiveCancelTime, maxExclusiveCancelTimePercent);
+            timeAssets += PercentLib.calcPercent(
+                maxExclusiveCancelTime - exclusiveCancelTime,
+                maxExclusiveCancelTimePercent
+            );
         }
     }
 

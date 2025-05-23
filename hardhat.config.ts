@@ -20,6 +20,7 @@ const config: HardhatUserConfig = {
     strict: true,
     only: [
       'contracts/pool/FlexPool.sol',
+      'contracts/next/pool/FlexPoolNext.sol',
       'contracts/give/transfer/TransferGiveProvider.sol',
       'contracts/take/transfer/TransferTakeProvider.sol',
       'contracts/tune/linear/LinearTuneProvider.sol',

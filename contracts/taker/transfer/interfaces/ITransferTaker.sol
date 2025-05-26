@@ -17,5 +17,7 @@ interface ITransferTaker is ITaker {
 
     function giveChain() external view returns (uint256);
 
-    function transferGiver() external view returns (address);
+    function giveTransferGiver() external view returns (address);
+
+    function giveDecimalsShift() external view returns (int256);
 }

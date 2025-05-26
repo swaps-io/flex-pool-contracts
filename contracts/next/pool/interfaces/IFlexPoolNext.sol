@@ -9,9 +9,7 @@ import {IAssetPermitter} from "../../../permit/interfaces/IAssetPermitter.sol";
 
 import {IEventVerifier} from "../../../verifier/interfaces/IEventVerifier.sol";
 
-// TODO: implement `IEventVerifier`
-
-interface IFlexPoolNext is IERC4626, IERC20Permit, IAssetPermitter {
+interface IFlexPoolNext is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
     // Event
 
     event Take(bytes32 indexed id);
@@ -23,12 +21,11 @@ interface IFlexPoolNext is IERC4626, IERC20Permit, IAssetPermitter {
     error AlreadyTaken(bytes32 id);
     error ReserveAffected(uint256 assets, uint256 minAssets);
     error SameTuner(address taker, address tuner);
+    error InvalidEvent(uint256 chain, address emitter, bytes32[] topics, bytes data);
 
     // Read
 
     function decimalsOffset() external view returns (uint8);
-
-    function verifier() external view returns (IEventVerifier);
 
     function currentAssets() external view returns (uint256);
 

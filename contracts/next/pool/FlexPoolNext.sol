@@ -15,11 +15,12 @@ import {ITuner} from "../tuner/interfaces/ITuner.sol";
 
 import {ITaker} from "../taker/interfaces/ITaker.sol";
 
-import {IFlexPoolNext, IEventVerifier} from "./interfaces/IFlexPoolNext.sol";
+import {IFlexPoolNext} from "./interfaces/IFlexPoolNext.sol";
 
 contract FlexPoolNext is IFlexPoolNext, ERC4626, ERC20Permit, AssetPermitter, Ownable2Step, Multicall {
+    bytes32 private constant TAKE_EVENT_SIGNATURE = keccak256("Take(bytes32)");
+
     uint8 public immutable override decimalsOffset;
-    IEventVerifier public immutable override verifier;
 
     uint256 public override reserveAssets;
     uint256 public override withdrawReserveAssets;
@@ -33,7 +34,6 @@ contract FlexPoolNext is IFlexPoolNext, ERC4626, ERC20Permit, AssetPermitter, Ow
         string memory name_,
         string memory symbol_,
         uint8 decimalsOffset_,
-        IEventVerifier verifier_,
         address initialOwner_
     )
         ERC4626(asset_)
@@ -43,7 +43,6 @@ contract FlexPoolNext is IFlexPoolNext, ERC4626, ERC20Permit, AssetPermitter, Ow
         Ownable(initialOwner_)
     {
         decimalsOffset = decimalsOffset_;
-        verifier = verifier_;
     }
 
     // Read
@@ -103,6 +102,24 @@ contract FlexPoolNext is IFlexPoolNext, ERC4626, ERC20Permit, AssetPermitter, Ow
         _sendAssets(assets_ + rewardAssets, taker_);
         ITaker(taker_).take{value: msg.value}(assets_, rewardAssets, giveAssets, id, takerData_);
         emit Take(id);
+    }
+
+    function verifyEvent(
+        uint256 chain_,
+        address emitter_,
+        bytes32[] calldata topics_,
+        bytes calldata data_,
+        bytes calldata /* proof */
+    ) public override view {
+        require(
+            chain_ == block.chainid &&
+            emitter_ == address(this) &&
+            data_.length == 0 &&
+            topics_.length == 2 &&
+            topics_[0] == TAKE_EVENT_SIGNATURE &&
+            taken[topics_[1]],
+            InvalidEvent(chain_, emitter_, topics_, data_)
+        );
     }
 
     // Write - owner

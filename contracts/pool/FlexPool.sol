@@ -83,12 +83,12 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         bytes calldata takerData_,
         bytes calldata tunerData_
     ) public payable override {
-        bytes32 id = ITaker(taker_).identify(assets_, takerData_);
-        require(!taken[id], AlreadyTaken(id));
-        taken[id] = true;
-
         address tuner_ = tuner[taker_];
         require(tuner_ != address(0), NoTuner(taker_));
+
+        bytes32 id = ITaker(taker_).identify(takerData_);
+        require(!taken[id], AlreadyTaken(id));
+        taken[id] = true;
 
         (uint256 protocolAssets, uint256 rebalanceAssets) = ITuner(tuner_).tune(assets_, tunerData_);
         uint256 giveAssets = assets_ + protocolAssets + rebalanceAssets;
@@ -100,7 +100,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         reserveAssets -= rewardAssets;
 
         _sendAssets(assets_ + rewardAssets, taker_);
-        ITaker(taker_).take{value: msg.value}(assets_, rewardAssets, giveAssets, id, takerData_);
+        ITaker(taker_).take{value: msg.value}(msg.sender, assets_, rewardAssets, giveAssets, id, takerData_);
         emit Take(id);
     }
 

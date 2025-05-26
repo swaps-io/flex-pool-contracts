@@ -25,12 +25,13 @@ contract TransferTaker is ITransferTaker {
         transferGiver = transferGiver_;
     }
 
-    function identify(uint256 /* assets_ */, bytes calldata data_) public view override returns (bytes32 id) {
+    function identify(bytes calldata data_) public view override returns (bytes32 id) {
         TransferTakeData calldata takeData = _decodeData(data_);
         return TransferGiveHashLib.calc(takeData.giveAssets, takeData.giveBlock, block.chainid, takeData.takeReceiver);
     }
 
     function take(
+        address /* caller_ */,
         uint256 assets_,
         uint256 rewardAssets_,
         uint256 giveAssets_,

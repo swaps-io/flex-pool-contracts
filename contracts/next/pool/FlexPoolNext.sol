@@ -17,8 +17,6 @@ import {ITaker} from "../taker/interfaces/ITaker.sol";
 
 import {IFlexPoolNext, IEventVerifier} from "./interfaces/IFlexPoolNext.sol";
 
-import {EnclaveDataLib} from "./libraries/EnclaveDataLib.sol";
-
 contract FlexPoolNext is IFlexPoolNext, ERC4626, ERC20Permit, AssetPermitter, Ownable2Step, Multicall {
     uint8 public immutable override decimalsOffset;
     IEventVerifier public immutable override verifier;
@@ -29,7 +27,6 @@ contract FlexPoolNext is IFlexPoolNext, ERC4626, ERC20Permit, AssetPermitter, Ow
     mapping(bytes32 id => bool) public override taken;
 
     uint256 private _totalAssets;
-    mapping(uint256 chain => bytes32) private _enclaveData;
 
     constructor(
         IERC20 asset_,
@@ -79,20 +76,6 @@ contract FlexPoolNext is IFlexPoolNext, ERC4626, ERC20Permit, AssetPermitter, Ow
         return reserveAssets - withdrawReserveAssets; // TODO: withdraw queue impl
     }
 
-    function enclave(uint256 chain_) public view override returns (address pool, uint8 decimals_) {
-        bytes32 data = _enclaveData[chain_];
-        pool = EnclaveDataLib.readPool(data);
-        decimals_ = EnclaveDataLib.readDecimals(data);
-    }
-
-    function enclavePool(uint256 chain_) public view override returns (address) {
-        return EnclaveDataLib.readPool(_enclaveData[chain_]);
-    }
-
-    function enclaveDecimals(uint256 chain_) public view override returns (uint8) {
-        return EnclaveDataLib.readDecimals(_enclaveData[chain_]);
-    }
-
     // Write
 
     function take(
@@ -123,19 +106,6 @@ contract FlexPoolNext is IFlexPoolNext, ERC4626, ERC20Permit, AssetPermitter, Ow
     }
 
     // Write - owner
-
-    function expandEnclave(uint256 chain_, address pool_, uint8 decimals_) public override onlyOwner {
-        require(pool_ != address(0), ZeroEnclavePool());
-        require(_enclaveData[chain_] == EnclaveDataLib.EMPTY_DATA, AlreadyEnclave(chain_));
-        _enclaveData[chain_] = EnclaveDataLib.makeData(pool_, decimals_);
-        emit EnclaveExpand(chain_, pool_, decimals_);
-    }
-
-    function shrinkEnclave(uint256 chain_) public override onlyOwner {
-        require(_enclaveData[chain_] != EnclaveDataLib.EMPTY_DATA, NoEnclave(chain_));
-        _enclaveData[chain_] = EnclaveDataLib.EMPTY_DATA;
-        emit EnclaveShrink(chain_);
-    }
 
     function setTuner(address taker_, address tuner_) public override onlyOwner {
         address oldTuner = tuner[taker_];

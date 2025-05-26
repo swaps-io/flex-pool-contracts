@@ -7,7 +7,6 @@ import {ERC20Permit, IERC20Permit, ERC20} from "@openzeppelin/contracts/token/ER
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {AssetPermitter} from "../permit/AssetPermitter.sol";
 
@@ -75,14 +74,6 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         return reserveAssets - withdrawReserveAssets; // TODO: withdraw queue impl
     }
 
-    function rebalanceRewardAssets(uint256 assets_) public view override returns (uint256 rewardAssets) {
-        int256 equilibrium = equilibriumAssets();
-        if (equilibrium > 0) {
-            uint256 rebalance = Math.min(uint256(equilibrium), assets_);
-            rewardAssets = Math.mulDiv(rebalanceReserveAssets(), rebalance, uint256(equilibrium));
-        }
-    }
-
     // Write
 
     function take(
@@ -98,16 +89,22 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         require(!taken[id], AlreadyTaken(id));
         taken[id] = true;
 
-        (uint256 protocolAssets, uint256 rebalanceAssets) = ITuner(tuner_).tune(assets_, tunerData_);
-        uint256 giveAssets = assets_ + protocolAssets + rebalanceAssets;
+        (uint256 protocolAssets, int256 rebalanceAssets) = ITuner(tuner_).tune(assets_, tunerData_);
+
+        uint256 giveAssets = assets_ + protocolAssets;
+        uint256 sendAssets = assets_;
+        uint256 rewardAssets = 0;
+        if (rebalanceAssets > 0) {
+            giveAssets += uint256(rebalanceAssets);
+        } else {
+            rewardAssets = uint256(-rebalanceAssets);
+            sendAssets += rewardAssets;
+        }
 
         _totalAssets += protocolAssets;
-        reserveAssets += rebalanceAssets;
+        reserveAssets = uint256(int256(reserveAssets) + rebalanceAssets);
 
-        uint256 rewardAssets = rebalanceRewardAssets(assets_);
-        reserveAssets -= rewardAssets;
-
-        _sendAssets(assets_ + rewardAssets, taker_);
+        _sendAssets(sendAssets, taker_);
         ITaker(taker_).take{value: msg.value}(msg.sender, assets_, rewardAssets, giveAssets, id, takerData_);
         emit Take(id);
     }

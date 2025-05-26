@@ -8,6 +8,6 @@ interface ITuner {
         bytes calldata data
     ) external view returns (
         uint256 protocolAssets,
-        uint256 rebalanceAssets
+        int256 rebalanceAssets
     );
 }

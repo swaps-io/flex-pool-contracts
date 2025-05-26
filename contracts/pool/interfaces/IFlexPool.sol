@@ -39,8 +39,6 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
 
     function withdrawReserveAssets() external view returns (uint256);
 
-    function rebalanceRewardAssets(uint256 assets) external view returns (uint256);
-
     function tuner(address taker) external view returns (address);
 
     function taken(bytes32 id) external view returns (bool);

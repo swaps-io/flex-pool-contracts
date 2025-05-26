@@ -18,6 +18,7 @@ interface IFlexPoolNext is IERC4626, IERC20Permit, IAssetPermitter {
 
     event EnclaveExpand(uint256 indexed chain, address pool, uint8 decimals);
     event EnclaveShrink(uint256 indexed chain);
+    event TunerUpdate(address indexed taker, address indexed oldTuner, address indexed newTuner);
 
     // Error
 
@@ -25,6 +26,7 @@ interface IFlexPoolNext is IERC4626, IERC20Permit, IAssetPermitter {
     error AlreadyTaken(bytes32 id);
     error ReserveAffected(uint256 assets, uint256 minAssets);
 
+    error SameTuner(address taker, address tuner);
     error ZeroEnclavePool();
     error AlreadyEnclave(uint256 chain);
     error NoEnclave(uint256 chain);
@@ -71,6 +73,8 @@ interface IFlexPoolNext is IERC4626, IERC20Permit, IAssetPermitter {
     function expandEnclave(uint256 chain, address pool, uint8 decimals) external;
 
     function shrinkEnclave(uint256 chain) external;
+
+    function setTuner(address taker, address tuner) external;
 
     // TODO: consider pausable
 

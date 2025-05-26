@@ -137,6 +137,13 @@ contract FlexPoolNext is IFlexPoolNext, ERC4626, ERC20Permit, AssetPermitter, Ow
         emit EnclaveShrink(chain_);
     }
 
+    function setTuner(address taker_, address tuner_) public override onlyOwner {
+        address oldTuner = tuner[taker_];
+        require(tuner_ != oldTuner, SameTuner(taker_, tuner_));
+        tuner[taker_] = tuner_;
+        emit TunerUpdate(taker_, oldTuner, tuner_);
+    }
+
     // ---
 
     function _decimalsOffset() internal view override returns (uint8) {

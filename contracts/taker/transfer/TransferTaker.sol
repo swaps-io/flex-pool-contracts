@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {ITransferTaker, IERC20, IEventVerifier} from "./interfaces/ITransferTaker.sol";
 
-import {TransferData} from "./structs/TransferData.sol";
+import {TransferTakeData} from "./structs/TransferTakeData.sol";
 
 import {TransferGiveHashLib} from "./libraries/TransferGiveHashLib.sol";
 
@@ -26,13 +26,8 @@ contract TransferTaker is ITransferTaker {
     }
 
     function identify(uint256 /* assets_ */, bytes calldata data_) public view override returns (bytes32 id) {
-        TransferData calldata transferData = _decodeData(data_);
-        return TransferGiveHashLib.calc(
-            transferData.giveAssets,
-            transferData.giveBlock,
-            block.chainid,
-            transferData.takeReceiver
-        );
+        TransferTakeData calldata takeData = _decodeData(data_);
+        return TransferGiveHashLib.calc(takeData.giveAssets, takeData.giveBlock, block.chainid, takeData.takeReceiver);
     }
 
     function take(
@@ -42,10 +37,10 @@ contract TransferTaker is ITransferTaker {
         bytes32 id_,
         bytes calldata data_
     ) public payable override {
-        TransferData calldata transferData = _decodeData(data_);
-        require(transferData.giveAssets >= giveAssets_, InsufficientGiveAssets(transferData.giveAssets, giveAssets_));
-        _verifyGiveEvent(id_, transferData.giveProof);
-        SafeERC20.safeTransfer(asset, transferData.takeReceiver, assets_ + rewardAssets_);
+        TransferTakeData calldata takeData = _decodeData(data_);
+        require(takeData.giveAssets >= giveAssets_, InsufficientGiveAssets(takeData.giveAssets, giveAssets_));
+        _verifyGiveEvent(id_, takeData.giveProof);
+        SafeERC20.safeTransfer(asset, takeData.takeReceiver, assets_ + rewardAssets_);
     }
 
     function _verifyGiveEvent(bytes32 giveHash_, bytes memory giveProof_) private {
@@ -55,7 +50,7 @@ contract TransferTaker is ITransferTaker {
         verifier.verifyEvent(giveChain, transferGiver, topics, "", giveProof_);
     }
 
-    function _decodeData(bytes calldata data_) private pure returns (TransferData calldata transferData) {
-        assembly { transferData := data_.offset } // solhint-disable-line no-inline-assembly
+    function _decodeData(bytes calldata data_) private pure returns (TransferTakeData calldata takeData) {
+        assembly { takeData := data_.offset } // solhint-disable-line no-inline-assembly
     }
 }

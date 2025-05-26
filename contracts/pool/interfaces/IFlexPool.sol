@@ -9,63 +9,23 @@ import {IAssetPermitter} from "../../permit/interfaces/IAssetPermitter.sol";
 
 import {IEventVerifier} from "../../verifier/interfaces/IEventVerifier.sol";
 
-import {Loan} from "../structs/Loan.sol";
-import {TuneParams} from "../structs/TuneParams.sol";
-import {TuneResult} from "../structs/TuneResult.sol";
-import {GiveParams} from "../structs/GiveParams.sol";
-import {TakeParams} from "../structs/TakeParams.sol";
-import {ConfirmParams} from "../structs/ConfirmParams.sol";
-import {RefuseParams} from "../structs/RefuseParams.sol";
-import {CancelParams} from "../structs/CancelParams.sol";
-
-import {LoanGiveState} from "../enums/LoanGiveState.sol";
-import {LoanTakeState} from "../enums/LoanTakeState.sol";
-
 interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
-    event Give(bytes32 indexed loanHash);
-    event Take(bytes32 indexed loanHash);
-    event Confirm(bytes32 indexed loanHash);
-    event Refuse(bytes32 indexed loanHash);
-    event Cancel(bytes32 indexed loanHash);
+    // Event
 
-    event EnclavePoolUpdate(uint256 indexed chain, address oldPool, address newPool);
-    event EnclaveTakeProviderUpdate(
-        uint256 indexed takeChain,
-        address indexed tuneProvider,
-        address indexed giveProvider,
-        address oldTakeProvider,
-        address newTakeProvider
-    );
-    event FunctionPause(uint8 indexed index);
-    event FunctionUnpause(uint8 indexed index);
+    event Take(bytes32 indexed id);
+    event TunerUpdate(address indexed taker, address indexed oldTuner, address indexed newTuner);
 
-    error InsufficientEscrowValue(uint256 value, uint256 minValue);
-    error InvalidLoanGiveState(bytes32 loanHash, LoanGiveState state, LoanGiveState expectedState);
-    error InvalidLoanTakeState(bytes32 loanHash, LoanTakeState state, LoanTakeState expectedState);
+    // Error
+
+    error NoTuner(address taker);
+    error AlreadyTaken(bytes32 id);
     error ReserveAffected(uint256 assets, uint256 minAssets);
-    error TakeNoLongerActive(uint256 time, uint256 deadline);
-    error TakeStillActive(uint256 time, uint256 deadline);
-    error ExclusiveCancelStillActive(address caller, address canceller, uint256 time, uint256 deadline);
+    error SameTuner(address taker, address tuner);
+    error InvalidEvent(uint256 chain, address emitter, bytes32[] topics, bytes data);
 
-    error EventChainMismatch(uint256 chain, uint256 expectedChain);
-    error EventEmitterMismatch(address emitter, address expectedEmitter);
-    error EventTopicsMismatch(bytes32[] topics, uint256 expectedTopicsLength);
-    error EventDataMismatch(bytes data, uint256 expectedDataLength);
-    error EventSignatureMismatch(bytes32 eventSignature);
-
-    error SameEnclavePool(uint256 chain, address pool);
-    error NoEnclavePool(uint256 chain);
-    error SameEnclaveTakeProvider(uint256 takeChain, address tuneProvider, address giveProvider, address takeProvider);
-    error NoEnclaveTakeProvider(uint256 takeChain, address tuneProvider, address giveProvider);
-    error SameFunctionPause(uint8 index);
-    error SameFunctionUnpause(uint8 index);
-    error FunctionPaused(uint8 index);
+    // Read
 
     function decimalsOffset() external view returns (uint8);
-
-    function enclaveDecimalsOffset() external view returns (uint8);
-
-    function verifier() external view returns (IEventVerifier);
 
     function currentAssets() external view returns (uint256);
 
@@ -79,54 +39,24 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
 
     function withdrawReserveAssets() external view returns (uint256);
 
-    function loanGiveState(bytes32 loanHash) external view returns (LoanGiveState);
+    function tuner(address taker) external view returns (address);
 
-    function loanTakeState(bytes32 loanHash) external view returns (LoanTakeState);
+    function taken(bytes32 id) external view returns (bool);
 
-    function loanEscrowValue(bytes32 loanHash) external view returns (uint256);
+    // Write
 
-    function enclavePool(uint256 chain) external view returns (address);
+    function take(
+        uint256 assets,
+        address taker,
+        bytes calldata takerData,
+        bytes calldata tunerData
+    ) external payable;
 
-    function enclaveTakeProvider(
-        uint256 takeChain,
-        address tuneProvider,
-        address giveProvider
-    ) external view returns (address);
+    // Write - owner
 
-    function functionPause(uint8 index) external view returns (bool);
+    function setTuner(address taker, address tuner) external;
 
-    function convertToEnclaveAssets(uint256 assets) external view returns (uint256);
+    // TODO: consider pausable
 
-    function calcLoanHash(Loan calldata loan) external view returns (bytes32);
-
-    function tune(TuneParams calldata params) external view returns (TuneResult memory);
-
-    function give(GiveParams calldata params) external payable; // Pausable #0
-
-    function take(TakeParams calldata params) external; // Pausable #1
-
-    function confirm(ConfirmParams calldata params) external; // Pausable #2
-
-    function refuse(RefuseParams calldata params) external; // Pausable #3
-
-    function cancel(CancelParams calldata params) external; // Pausable #4
-
-    // Pausable in ERC-4626:
-    // - deposit/mint: #5
-    // - withdraw/redeem: #6
-
-    // Owner functionality
-
-    function setEnclavePool(uint256 chain, address pool) external;
-
-    function setEnclaveTakeProvider(
-        uint256 takeChain,
-        address tuneProvider,
-        address giveProvider,
-        address takeProvider
-    ) external;
-
-    function pauseFunction(uint8 index) external;
-
-    function unpauseFunction(uint8 index) external;
+    // TODO: consider non-asset rescue
 }

@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {AssetPermitter} from "../../../permit/AssetPermitter.sol";
+import {AssetPermitter} from "../../permit/AssetPermitter.sol";
 
 import {ITransferGiver, IERC20} from "./interfaces/ITransferGiver.sol";
 

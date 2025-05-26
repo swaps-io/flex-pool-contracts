@@ -75,6 +75,14 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         return reserveAssets - withdrawReserveAssets; // TODO: withdraw queue impl
     }
 
+    function rebalanceRewardAssets(uint256 assets_) public view override returns (uint256 rewardAssets) {
+        int256 equilibrium = equilibriumAssets();
+        if (equilibrium > 0) {
+            uint256 rebalance = Math.min(uint256(equilibrium), assets_);
+            rewardAssets = Math.mulDiv(rebalanceReserveAssets(), rebalance, uint256(equilibrium));
+        }
+    }
+
     // Write
 
     function take(
@@ -96,7 +104,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
         _totalAssets += protocolAssets;
         reserveAssets += rebalanceAssets;
 
-        uint256 rewardAssets = _calcRebalanceReward(assets_);
+        uint256 rewardAssets = rebalanceRewardAssets(assets_);
         reserveAssets -= rewardAssets;
 
         _sendAssets(assets_ + rewardAssets, taker_);
@@ -162,14 +170,6 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, Ownable2St
 
     function _verifyReserveAssets() private view {
         require(currentAssets() >= reserveAssets, ReserveAffected(currentAssets(), reserveAssets));
-    }
-
-    function _calcRebalanceReward(uint256 assets_) private view returns (uint256 reward) {
-        int256 equilibrium = equilibriumAssets();
-        if (equilibrium > 0) {
-            uint256 rebalance = Math.min(uint256(equilibrium), assets_);
-            reward = Math.mulDiv(rebalanceReserveAssets(), rebalance, uint256(equilibrium));
-        }
     }
 
     function _sendAssets(uint256 assets_, address receiver_) private {

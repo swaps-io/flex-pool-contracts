@@ -18,11 +18,11 @@ contract TestToken is ERC20Permit {
         return _decimals;
     }
 
-    function mint(address account_, uint256 assets_) external {
+    function mint(address account_, uint256 assets_) public {
         _mint(account_, assets_);
     }
 
-    function burn(address account_, uint256 assets_) external {
+    function burn(address account_, uint256 assets_) public {
         _burn(account_, assets_);
     }
 }

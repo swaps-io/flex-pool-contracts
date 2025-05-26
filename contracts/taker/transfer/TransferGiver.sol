@@ -26,7 +26,7 @@ contract TransferGiver is ITransferGiver, AssetPermitter {
         _emitGiveEvent(assets_, takeChain_, takeReceiver_);
     }
 
-    function giveOwn(uint256 assets_, uint256 takeChain_, address takeReceiver_) public override {
+    function giveHold(uint256 assets_, uint256 takeChain_, address takeReceiver_) public override {
         SafeERC20.safeTransfer(asset, pool, assets_);
         _emitGiveEvent(assets_, takeChain_, takeReceiver_);
     }

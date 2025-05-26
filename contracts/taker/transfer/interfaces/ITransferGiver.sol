@@ -15,5 +15,5 @@ interface ITransferGiver is IAssetPermitter {
 
     function give(uint256 assets, uint256 takeChain, address takeReceiver) external;
 
-    function giveOwn(uint256 assets, uint256 takeChain, address takeReceiver) external;
+    function giveHold(uint256 assets, uint256 takeChain, address takeReceiver) external;
 }

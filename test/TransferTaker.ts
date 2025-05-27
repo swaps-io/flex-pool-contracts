@@ -235,6 +235,7 @@ describe('TransferTaker', function () {
     const takeAssets = 123_456_000n; // = (giveAssets - protocolAssets - rebalanceAssets) in +3 decimals
     const protocolAssets = 10_000n;
     const rebalanceAssets = 20_000n;
+    const poolInitAssets = takeAssets * 2n;
     const takeReceiver = '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
     const giveHash = keccak256(encodeAbiParameters(TRANSFER_GIVE_HASH_DATA_ABI, [
       giveAssets, // giveAssets
@@ -270,7 +271,7 @@ describe('TransferTaker', function () {
       functionName: 'mint',
       args: [
         pool.address, // account
-        takeAssets * 2n, // assets
+        poolInitAssets, // assets
       ],
     });
 
@@ -349,5 +350,35 @@ describe('TransferTaker', function () {
       ],
     });
     expect(receiverBalance).equal(takeAssets);
+
+    const poolBalance = await publicClient.readContract({
+      abi: takerAsset.abi,
+      address: takerAsset.address,
+      functionName: 'balanceOf',
+      args: [
+        pool.address, // account
+      ],
+    });
+    expect(poolBalance).equal(poolInitAssets - takeAssets);
+
+    const poolRebalanceReserve = await publicClient.readContract({
+      abi: pool.abi,
+      address: pool.address,
+      functionName: 'rebalanceReserveAssets',
+      args: [],
+    });
+    expect(poolRebalanceReserve).equal(rebalanceAssets);
+
+    await expect(regularClient.writeContract({
+      abi: pool.abi,
+      address: pool.address,
+      functionName: 'take',
+      args: [
+        takeAssets, // assets
+        taker.address, // taker
+        takerData, // takerData
+        tunerData, // tunerData
+      ],
+    })).rejectedWith(`AlreadyTaken("${giveHash}")`);
   });
 });

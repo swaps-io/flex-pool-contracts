@@ -67,6 +67,6 @@ contract TransferTaker is ITransferTaker {
     }
 
     function _decodeData(bytes calldata data_) private pure returns (TransferTakeData calldata takeData) {
-        assembly { takeData := data_.offset } // solhint-disable-line no-inline-assembly
+        assembly { takeData := add(data_.offset, 32) } // solhint-disable-line no-inline-assembly
     }
 }

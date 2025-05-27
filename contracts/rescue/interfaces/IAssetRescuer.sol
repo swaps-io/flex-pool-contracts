@@ -6,5 +6,5 @@ interface IAssetRescuer {
     error RescueCallerNotAllowed(address caller);
     error RescueAssetNotAllowed(address asset);
 
-    function rescue(address asset, uint256 amount, address to) external;
+    function rescue(address asset, uint256 amount, address to) external; // Only allowed caller & asset
 }

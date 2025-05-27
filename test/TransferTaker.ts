@@ -1,7 +1,7 @@
 import { loadFixture, } from '@nomicfoundation/hardhat-toolbox-viem/network-helpers';
 import hre from 'hardhat';
 import { expect } from 'chai';
-import { encodeAbiParameters, getAbiItem, keccak256, maxUint256, parseAbiParameters, parseEther, parseEventLogs, toEventSelector } from 'viem';
+import { encodeAbiParameters, getAbiItem, keccak256, maxUint256, parseAbiParameters, parseEventLogs, toEventSelector, zeroAddress } from 'viem';
 
 const TRANSFER_GIVE_HASH_DATA_ABI = parseAbiParameters([
   'uint256 giveAssets, uint256 giveBlock, uint256 takeChain, address takeReceiver',
@@ -43,19 +43,21 @@ describe('TransferTaker', function () {
     const giver = await hre.viem.deployContract('TransferGiver', [
       giverAsset.address, // asset
       pool.address, // pool
+      zeroAddress, // controller
     ]);
 
     const verifier = await hre.viem.deployContract('TestVerifier');
 
     const taker = await hre.viem.deployContract('TransferTaker', [
       takerAsset.address, // asset
-      verifier.address, // verifier
       55_555n, // giveChain
       giver.address, // giveTransferGiver
       BigInt(
         await giverAsset.read.decimals() -
         await takerAsset.read.decimals()
       ), // giveDecimalsShift
+      verifier.address, // verifier
+      zeroAddress, // controller
     ]);
 
     const tuner = await hre.viem.deployContract('TestTuner');

@@ -6,7 +6,11 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import {IAssetPermitter} from "../../../permit/interfaces/IAssetPermitter.sol";
 
-interface ITransferGiver is IAssetPermitter {
+import {IAssetRescuer} from "../../../rescue/interfaces/IAssetRescuer.sol";
+
+import {IControllable} from "../../../control/interfaces/IControllable.sol";
+
+interface ITransferGiver is IAssetPermitter, IAssetRescuer, IControllable {
     event TransferGive(bytes32 indexed giveHash);
 
     function asset() external view returns (IERC20);

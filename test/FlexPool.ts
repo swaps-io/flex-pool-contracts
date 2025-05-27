@@ -75,11 +75,12 @@ describe('FlexPool', function () {
   });
 
   it('Should not allow regular to add taker', async function () {
-    const { pool, regularClient } = await loadFixture(deployFixture);
+    const { pool, regularClient, ownerClient } = await loadFixture(deployFixture);
 
     const taker = '0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF';
     const tuner = '0xC0Dec0dec0DeC0Dec0dEc0DEC0DEC0DEC0DEC0dE';
     const caller = checksumAddress(regularClient.account.address);
+    const controller = checksumAddress(ownerClient.account.address);
 
     await expect(
       regularClient.writeContract({
@@ -91,7 +92,7 @@ describe('FlexPool', function () {
           tuner, // tuner
         ],
       }),
-    ).rejectedWith(`OwnableUnauthorizedAccount("${caller}")`);
+    ).rejectedWith(`CallerNotController("${caller}", "${controller}")`);
   });
 
   it('Should allow owner to add taker', async function () {

@@ -6,16 +6,25 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {AssetPermitter} from "../../permit/AssetPermitter.sol";
 
+import {AssetRescuer} from "../../rescue/AssetRescuer.sol";
+
+import {Controllable} from "../../control/Controllable.sol";
+
 import {ITransferGiver, IERC20} from "./interfaces/ITransferGiver.sol";
 
 import {TransferGiveHashLib} from "./libraries/TransferGiveHashLib.sol";
 
-contract TransferGiver is ITransferGiver, AssetPermitter {
+contract TransferGiver is ITransferGiver, AssetPermitter, AssetRescuer, Controllable {
     IERC20 public immutable override asset;
     address public immutable override pool;
 
-    constructor(IERC20 asset_, address pool_)
+    constructor(
+        IERC20 asset_,
+        address pool_,
+        address controller_
+    )
         AssetPermitter(asset_)
+        Controllable(controller_)
     {
         asset = asset_;
         pool = pool_;
@@ -30,6 +39,18 @@ contract TransferGiver is ITransferGiver, AssetPermitter {
         SafeERC20.safeTransfer(asset, pool, assets_);
         _emitGiveEvent(assets_, takeChain_, takeReceiver_);
     }
+
+    // ---
+
+    function _canCallRescue(address caller_) internal view override returns (bool) {
+        return caller_ == controller;
+    }
+
+    function _canRescueAsset(address /* asset_ */) internal pure override returns (bool) {
+        return true; // Not designed to hold asset after transaction
+    }
+
+    // ---
 
     function _emitGiveEvent(uint256 assets_, uint256 takeChain_, address takeReceiver_) private {
         bytes32 giveHash = TransferGiveHashLib.calc(assets_, block.number, takeChain_, takeReceiver_);

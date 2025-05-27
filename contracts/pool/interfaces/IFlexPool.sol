@@ -7,9 +7,13 @@ import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC2
 
 import {IAssetPermitter} from "../../permit/interfaces/IAssetPermitter.sol";
 
+import {IAssetRescuer} from "../../rescue/interfaces/IAssetRescuer.sol";
+
+import {IControllable} from "../../control/Controllable.sol";
+
 import {IEventVerifier} from "../../verifier/interfaces/IEventVerifier.sol";
 
-interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
+interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IAssetRescuer, IControllable, IEventVerifier {
     // Event
 
     event Take(bytes32 indexed id);
@@ -52,11 +56,7 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IEventVerifier {
         bytes calldata tunerData
     ) external payable;
 
-    // Write - owner
-
-    function setTuner(address taker, address tuner) external;
+    function setTuner(address taker, address tuner) external; // Only controller
 
     // TODO: consider pausable
-
-    // TODO: consider non-asset rescue
 }

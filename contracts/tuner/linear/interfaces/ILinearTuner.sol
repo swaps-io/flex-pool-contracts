@@ -2,13 +2,11 @@
 
 pragma solidity ^0.8.26;
 
-import {IFlexPool} from "../../../pool/interfaces/IFlexPool.sol";
+import {IPoolAware} from "../../../pool/aware/interfaces/IPoolAware.sol";
 
 import {ITuner} from "../../interfaces/ITuner.sol";
 
-interface ILinearTuner is ITuner {
-    function pool() external view returns (IFlexPool);
-
+interface ILinearTuner is ITuner, IPoolAware {
     function protocolFixed() external view returns (uint256);
 
     function protocolPercent() external view returns (uint256);

@@ -2,21 +2,26 @@
 
 pragma solidity ^0.8.26;
 
+import {PoolAware, IFlexPool} from "../../pool/aware/PoolAware.sol";
+
+import {VerifierAware, IEventVerifier} from "../../verifier/aware/VerifierAware.sol";
+
 import {AssetRescuer} from "../../rescue/AssetRescuer.sol";
 
 import {Controllable} from "../../control/Controllable.sol";
 
-import {IFusionTaker, IEventVerifier} from "./interfaces/IFusionTaker.sol";
+import {IFusionTaker} from "./interfaces/IFusionTaker.sol";
 
 import {FusionTakeData} from "./structs/FusionTakeData.sol";
 
-contract FusionTaker is IFusionTaker, AssetRescuer, Controllable {
-    IEventVerifier public immutable override verifier;
-
+contract FusionTaker is IFusionTaker, PoolAware, VerifierAware, AssetRescuer, Controllable {
     constructor(
+        IFlexPool pool_,
         IEventVerifier verifier_,
         address controller_
     )
+        PoolAware(pool_)
+        VerifierAware(verifier_)
         Controllable(controller_)
     {
         verifier = verifier_;
@@ -34,7 +39,7 @@ contract FusionTaker is IFusionTaker, AssetRescuer, Controllable {
         uint256 giveAssets_,
         bytes32 id_,
         bytes calldata data_
-    ) public payable override {
+    ) public payable override onlyPool {
         FusionTakeData calldata takeData = _decodeData(data_);
         // TODO
     }

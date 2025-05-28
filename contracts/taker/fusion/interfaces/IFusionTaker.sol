@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.26;
 
+import {IPoolAware} from "../../../pool/aware/interfaces/IPoolAware.sol";
+
+import {IVerifierAware} from "../../../verifier/aware/interfaces/IVerifierAware.sol";
+
 import {IAssetRescuer} from "../../../rescue/interfaces/IAssetRescuer.sol";
 
 import {IControllable} from "../../../control/interfaces/IControllable.sol";
 
-import {IEventVerifier} from "../../../verifier/interfaces/IEventVerifier.sol";
-
 import {ITaker} from "../../interfaces/ITaker.sol";
 
-interface IFusionTaker is ITaker, IAssetRescuer, IControllable {
-    function verifier() external view returns (IEventVerifier);
-}
+interface IFusionTaker is ITaker, IPoolAware, IVerifierAware, IAssetRescuer, IControllable {}

@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.26;
 
+import {PoolAware, IFlexPool} from "../../pool/aware/PoolAware.sol";
+
 import {PercentLib, Math} from "../../util/libraries/PercentLib.sol";
 
-import {ILinearTuner, IFlexPool} from "./interfaces/ILinearTuner.sol";
+import {ILinearTuner} from "./interfaces/ILinearTuner.sol";
 
-contract LinearTuner is ILinearTuner {
-    IFlexPool public immutable override pool;
+contract LinearTuner is ILinearTuner, PoolAware {
     uint256 public immutable override protocolFixed;
     uint256 public immutable override protocolPercent;
     uint256 public immutable override rebalanceFixed;
@@ -19,8 +20,9 @@ contract LinearTuner is ILinearTuner {
         uint256 protocolPercent_,
         uint256 rebalanceFixed_,
         uint256 rebalancePercent_
-    ) {
-        pool = pool_;
+    )
+        PoolAware(pool_)
+    {
         protocolFixed = protocolFixed_;
         protocolPercent = protocolPercent_;
         rebalanceFixed = rebalanceFixed_;

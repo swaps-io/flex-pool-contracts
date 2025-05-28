@@ -4,41 +4,43 @@ pragma solidity ^0.8.26;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import {PoolAware, IFlexPool} from "../../pool/aware/PoolAware.sol";
+
+import {VerifierAware, IEventVerifier} from "../../verifier/aware/VerifierAware.sol";
+
 import {AssetRescuer} from "../../rescue/AssetRescuer.sol";
 
 import {Controllable} from "../../control/Controllable.sol";
 
 import {DecimalsLib} from "../../util/libraries/DecimalsLib.sol";
 
-import {ITransferTaker, IERC20, IEventVerifier} from "./interfaces/ITransferTaker.sol";
+import {ITransferTaker} from "./interfaces/ITransferTaker.sol";
 import {ITransferGiver} from "./interfaces/ITransferGiver.sol";
 
 import {TransferTakeData} from "./structs/TransferTakeData.sol";
 
 import {TransferGiveHashLib} from "./libraries/TransferGiveHashLib.sol";
 
-contract TransferTaker is ITransferTaker, AssetRescuer, Controllable {
-    IERC20 public immutable override asset;
+contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer, Controllable {
     uint256 public immutable override giveChain;
     address public immutable override giveTransferGiver;
     int256 public immutable override giveDecimalsShift;
-    IEventVerifier public immutable override verifier;
 
     constructor(
-        IERC20 asset_,
+        IFlexPool pool_,
+        IEventVerifier verifier_,
+        address controller_,
         uint256 giveChain_,
         address giveTransferGiver_,
-        int256 giveDecimalsShift_,
-        IEventVerifier verifier_,
-        address controller_
+        int256 giveDecimalsShift_
     )
+        PoolAware(pool_)
+        VerifierAware(verifier_)
         Controllable(controller_)
     {
-        asset = asset_;
         giveChain = giveChain_;
         giveTransferGiver = giveTransferGiver_;
         giveDecimalsShift = giveDecimalsShift_;
-        verifier = verifier_;
     }
 
     function identify(bytes calldata data_) public view override returns (bytes32 id) {
@@ -53,11 +55,11 @@ contract TransferTaker is ITransferTaker, AssetRescuer, Controllable {
         uint256 giveAssets_,
         bytes32 id_,
         bytes calldata data_
-    ) public payable override {
+    ) public payable override onlyPool {
         TransferTakeData calldata takeData = _decodeData(data_);
         _verifyGiveAssets(giveAssets_, takeData.giveAssets);
         _verifyGiveEvent(id_, takeData.giveProof);
-        SafeERC20.safeTransfer(asset, takeData.takeReceiver, assets_ + rewardAssets_);
+        SafeERC20.safeTransfer(poolAsset, takeData.takeReceiver, assets_ + rewardAssets_);
     }
 
     // ---

@@ -32,7 +32,7 @@ describe('TransferTaker', function () {
       9, // decimals
     ]);
 
-    const pool = await hre.viem.deployContract('FlexPool', [
+    const takerPool = await hre.viem.deployContract('FlexPool', [
       takerAsset.address, // asset
       'Pool Test Token - Taker', // name
       'PTTT', // symbol
@@ -40,31 +40,33 @@ describe('TransferTaker', function () {
       ownerClient.account.address, // initialOwner
     ]);
 
+    const giverPool = await hre.viem.deployContract('TestPool');
+    await giverPool.write.setAsset([giverAsset.address]);
+
     const giver = await hre.viem.deployContract('TransferGiver', [
-      giverAsset.address, // asset
-      pool.address, // pool
+      giverPool.address, // pool
       zeroAddress, // controller
     ]);
 
     const verifier = await hre.viem.deployContract('TestVerifier');
 
     const taker = await hre.viem.deployContract('TransferTaker', [
-      takerAsset.address, // asset
+      takerPool.address, // pool
+      verifier.address, // verifier
+      zeroAddress, // controller
       55_555n, // giveChain
       giver.address, // giveTransferGiver
       BigInt(
         await giverAsset.read.decimals() -
         await takerAsset.read.decimals()
       ), // giveDecimalsShift
-      verifier.address, // verifier
-      zeroAddress, // controller
     ]);
 
     const tuner = await hre.viem.deployContract('TestTuner');
 
     await ownerClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: takerPool.abi,
+      address: takerPool.address,
       functionName: 'setTuner',
       args: [
         taker.address, // taker
@@ -76,9 +78,10 @@ describe('TransferTaker', function () {
       publicClient,
       regularClient,
       ownerClient,
-      pool,
+      giverPool,
       giverAsset,
       giver,
+      takerPool,
       takerAsset,
       taker,
       verifier,
@@ -102,7 +105,7 @@ describe('TransferTaker', function () {
   });
 
   it('Should give approved asset to pool', async function () {
-    const { publicClient, regularClient, ownerClient, giver, giverAsset, pool } = await loadFixture(deployFixture);
+    const { publicClient, regularClient, ownerClient, giver, giverAsset, giverPool } = await loadFixture(deployFixture);
 
     await ownerClient.writeContract({
       abi: giverAsset.abi,
@@ -159,14 +162,14 @@ describe('TransferTaker', function () {
       address: giverAsset.address,
       functionName: 'balanceOf',
       args: [
-        pool.address, // account
+        giverPool.address, // account
       ],
     });
     expect(poolBalance).equal(123_456n);
   });
 
   it('Should give hold asset to pool', async function () {
-    const { publicClient, regularClient, ownerClient, giver, giverAsset, pool } = await loadFixture(deployFixture);
+    const { publicClient, regularClient, ownerClient, giver, giverAsset, giverPool } = await loadFixture(deployFixture);
 
     await ownerClient.writeContract({
       abi: giverAsset.abi,
@@ -223,14 +226,14 @@ describe('TransferTaker', function () {
       address: giverAsset.address,
       functionName: 'balanceOf',
       args: [
-        pool.address, // account
+        giverPool.address, // account
       ],
     });
     expect(poolBalance).equal(123_456n);
   });
 
   it('Should take pool asset using give proof', async function () {
-    const { publicClient, regularClient, ownerClient, taker, takerAsset, pool, giver, verifier } = await loadFixture(deployFixture);
+    const { publicClient, regularClient, ownerClient, taker, takerAsset, takerPool, giver, verifier } = await loadFixture(deployFixture);
 
     const giveAssets = 123_486n;
     const giveBlock = 111_111n;
@@ -259,8 +262,8 @@ describe('TransferTaker', function () {
     }]);
 
     expect(await publicClient.readContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: takerPool.abi,
+      address: takerPool.address,
       functionName: 'taken',
       args: [
         giveHash, // id
@@ -272,14 +275,14 @@ describe('TransferTaker', function () {
       address: takerAsset.address,
       functionName: 'mint',
       args: [
-        pool.address, // account
+        takerPool.address, // account
         poolInitAssets, // assets
       ],
     });
 
     await expect(regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: takerPool.abi,
+      address: takerPool.address,
       functionName: 'take',
       args: [
         takeAssets, // assets
@@ -310,8 +313,8 @@ describe('TransferTaker', function () {
     });
 
     const hash = await regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: takerPool.abi,
+      address: takerPool.address,
       functionName: 'take',
       args: [
         takeAssets, // assets
@@ -322,8 +325,8 @@ describe('TransferTaker', function () {
     });
 
     expect(await publicClient.readContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: takerPool.abi,
+      address: takerPool.address,
       functionName: 'taken',
       args: [
         giveHash, // id
@@ -334,7 +337,7 @@ describe('TransferTaker', function () {
     console.log(`Pool.take with TransferTaker.take gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
-      abi: pool.abi,
+      abi: takerPool.abi,
       logs: receipt.logs,
       eventName: 'Take',
       args: {
@@ -358,22 +361,22 @@ describe('TransferTaker', function () {
       address: takerAsset.address,
       functionName: 'balanceOf',
       args: [
-        pool.address, // account
+        takerPool.address, // account
       ],
     });
     expect(poolBalance).equal(poolInitAssets - takeAssets);
 
     const poolRebalanceAssets = await publicClient.readContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: takerPool.abi,
+      address: takerPool.address,
       functionName: 'rebalanceAssets',
       args: [],
     });
     expect(poolRebalanceAssets).equal(rebalanceAssets);
 
     await expect(regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: takerPool.abi,
+      address: takerPool.address,
       functionName: 'take',
       args: [
         takeAssets, // assets

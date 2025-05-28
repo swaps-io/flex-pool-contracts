@@ -23,6 +23,7 @@ const config: HardhatUserConfig = {
       'contracts/tuner/linear/LinearTuner.sol',
       'contracts/taker/transfer/TransferGiver.sol',
       'contracts/taker/transfer/TransferTaker.sol',
+      'contracts/taker/fusion/FusionTaker.sol',
     ],
   },
 };

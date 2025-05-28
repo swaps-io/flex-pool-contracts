@@ -23,7 +23,7 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IAssetRescuer, I
 
     error NoTuner(address taker);
     error AlreadyTaken(bytes32 id);
-    error ReserveAffected(uint256 assets, uint256 minAssets);
+    error RebalanceAffected(uint256 assets, uint256 minAssets);
     error SameTuner(address taker, address tuner);
     error InvalidEvent(uint256 chain, address emitter, bytes32[] topics, bytes data);
 
@@ -37,15 +37,15 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IAssetRescuer, I
 
     function availableAssets() external view returns (uint256);
 
-    function reserveAssets() external view returns (uint256);
-
-    function rebalanceReserveAssets() external view returns (uint256);
-
-    function withdrawReserveAssets() external view returns (uint256);
+    function rebalanceAssets() external view returns (uint256);
 
     function tuner(address taker) external view returns (address);
 
     function taken(bytes32 id) external view returns (bool);
+
+    function clampAssetsToAvailable(uint256 assets) external view returns (uint256);
+
+    function clampSharesToAvailable(uint256 shares) external view returns (uint256);
 
     // Write
 
@@ -56,7 +56,9 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IAssetRescuer, I
         bytes calldata tunerData
     ) external payable;
 
-    function setTuner(address taker, address tuner) external; // Only controller
+    function withdrawAvailable(uint256 assets, address receiver, address owner) external returns (uint256);
 
-    // TODO: consider pausable
+    function redeemAvailable(uint256 shares, address receiver, address owner) external returns (uint256);
+
+    function setTuner(address taker, address tuner) external; // Only controller
 }

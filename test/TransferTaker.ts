@@ -363,13 +363,13 @@ describe('TransferTaker', function () {
     });
     expect(poolBalance).equal(poolInitAssets - takeAssets);
 
-    const poolRebalanceReserve = await publicClient.readContract({
+    const poolRebalanceAssets = await publicClient.readContract({
       abi: pool.abi,
       address: pool.address,
-      functionName: 'rebalanceReserveAssets',
+      functionName: 'rebalanceAssets',
       args: [],
     });
-    expect(poolRebalanceReserve).equal(rebalanceAssets);
+    expect(poolRebalanceAssets).equal(rebalanceAssets);
 
     await expect(regularClient.writeContract({
       abi: pool.abi,

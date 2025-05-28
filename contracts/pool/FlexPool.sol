@@ -6,6 +6,7 @@ import {ERC4626, IERC4626, IERC20Metadata} from "@openzeppelin/contracts/token/E
 import {ERC20Permit, IERC20Permit, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {AssetPermitter} from "../permit/AssetPermitter.sol";
 
@@ -24,8 +25,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
 
     uint8 public immutable override decimalsOffset;
 
-    uint256 public override reserveAssets;
-    uint256 public override withdrawReserveAssets;
+    uint256 public override rebalanceAssets;
     mapping(address taker => address) public override tuner;
     mapping(bytes32 id => bool) public override taken;
 
@@ -70,11 +70,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
     }
 
     function availableAssets() public view override returns (uint256) {
-        return currentAssets() - reserveAssets;
-    }
-
-    function rebalanceReserveAssets() public view override returns (uint256) {
-        return reserveAssets - withdrawReserveAssets; // TODO: withdraw queue impl
+        return currentAssets() - rebalanceAssets; // Non-negativeness ensured by `_verifyAssets`
     }
 
     function verifyEvent(
@@ -95,6 +91,14 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
         );
     }
 
+    function clampAssetsToAvailable(uint256 assets_) public view override returns (uint256) {
+        return Math.min(assets_, availableAssets());
+    }
+
+    function clampSharesToAvailable(uint256 shares_) public view override returns (uint256) {
+        return Math.min(shares_, previewWithdraw(availableAssets()));
+    }
+
     // Write
 
     function take(
@@ -110,24 +114,36 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
         require(!taken[id], AlreadyTaken(id));
         taken[id] = true;
 
-        (uint256 protocolAssets, int256 rebalanceAssets) = ITuner(tuner_).tune(assets_, tunerData_);
+        (uint256 tuneProtocolAssets, int256 tuneRebalanceAssets) = ITuner(tuner_).tune(assets_, tunerData_);
 
-        uint256 giveAssets = assets_ + protocolAssets;
-        uint256 sendAssets = assets_;
-        uint256 rewardAssets = 0;
-        if (rebalanceAssets > 0) {
-            giveAssets += uint256(rebalanceAssets);
-        } else {
-            rewardAssets = uint256(-rebalanceAssets);
-            sendAssets += rewardAssets;
+        uint256 giveAssets = assets_;
+        if (tuneProtocolAssets != 0) {
+            giveAssets += tuneProtocolAssets;
+            _totalAssets += tuneProtocolAssets;
         }
 
-        _totalAssets += protocolAssets;
-        reserveAssets = uint256(int256(reserveAssets) + rebalanceAssets);
+        uint256 rewardAssets = 0;
+        uint256 sendAssets = assets_;
+        if (tuneRebalanceAssets > 0) {
+            giveAssets += uint256(tuneRebalanceAssets);
+            rebalanceAssets += uint256(tuneRebalanceAssets);
+        } else {
+            rewardAssets = uint256(-tuneRebalanceAssets);
+            sendAssets += rewardAssets;
+            rebalanceAssets -= rewardAssets;
+        }
 
         _sendAssets(sendAssets, taker_);
         ITaker(taker_).take{value: msg.value}(msg.sender, assets_, rewardAssets, giveAssets, id, takerData_);
         emit Take(id);
+    }
+
+    function withdrawAvailable(uint256 assets_, address receiver_, address owner_) public override returns (uint256) {
+        return withdraw(clampAssetsToAvailable(assets_), receiver_, owner_);
+    }
+
+    function redeemAvailable(uint256 shares_, address receiver_, address owner_) public override returns (uint256) {
+        return redeem(clampSharesToAvailable(shares_), receiver_, owner_);
     }
 
     function setTuner(address taker_, address tuner_) public override onlyController {
@@ -162,6 +178,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
     ) internal override {
         _totalAssets -= assets_;
         ERC4626._withdraw(caller_, receiver_, owner_, assets_, shares_);
+        _verifyAssets();
     }
 
     function _canCallRescue(address caller_) internal view override returns (bool) {
@@ -174,12 +191,12 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
 
     // ---
 
-    function _verifyReserveAssets() private view {
-        require(currentAssets() >= reserveAssets, ReserveAffected(currentAssets(), reserveAssets));
+    function _verifyAssets() private view {
+        require(currentAssets() >= rebalanceAssets, RebalanceAffected(currentAssets(), rebalanceAssets));
     }
 
     function _sendAssets(uint256 assets_, address receiver_) private {
         SafeERC20.safeTransfer(IERC20(asset()), receiver_, assets_);
-        _verifyReserveAssets();
+        _verifyAssets();
     }
 }

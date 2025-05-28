@@ -33,7 +33,7 @@ contract LinearTuner is ILinearTuner {
         int256 equilibrium = pool.equilibriumAssets();
         if (equilibrium > 0) {
             uint256 relieve = Math.min(uint256(equilibrium), assets_);
-            rebalanceAssets -= int256(Math.mulDiv(pool.rebalanceReserveAssets(), relieve, uint256(equilibrium)));
+            rebalanceAssets -= int256(Math.mulDiv(pool.rebalanceAssets(), relieve, uint256(equilibrium)));
             assets_ -= relieve;
         }
         rebalanceAssets += int256(PercentLib.applyPercent(assets_, rebalancePercent));

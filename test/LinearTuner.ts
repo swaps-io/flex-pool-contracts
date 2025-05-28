@@ -65,7 +65,7 @@ describe('LinearTuner', function () {
     expect(rebalanceAssets).equal(5_186n); // eq -400_000 -> -523_456, 5_185.152 ceil
   });
 
-  it('Should tune for assets at far positive equilibrium and empty rebalance reserve', async function () {
+  it('Should tune for assets at far positive equilibrium and empty rebalance assets', async function () {
     const { tuner, pool } = await loadFixture(deployFixture);
 
     await pool.write.setEquilibriumAssets([400_000n]);
@@ -82,7 +82,7 @@ describe('LinearTuner', function () {
     const { tuner, pool } = await loadFixture(deployFixture);
 
     await pool.write.setEquilibriumAssets([400_000n]);
-    await pool.write.setRebalanceReserveAssets([10_000n]);
+    await pool.write.setRebalanceAssets([10_000n]);
 
     const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
       123_456n, // assets
@@ -96,7 +96,7 @@ describe('LinearTuner', function () {
     const { tuner, pool } = await loadFixture(deployFixture);
 
     await pool.write.setEquilibriumAssets([123_456n]);
-    await pool.write.setRebalanceReserveAssets([10_000n]);
+    await pool.write.setRebalanceAssets([10_000n]);
 
     const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
       123_456n, // assets
@@ -110,7 +110,7 @@ describe('LinearTuner', function () {
     const { tuner, pool } = await loadFixture(deployFixture);
 
     await pool.write.setEquilibriumAssets([88_000n]);
-    await pool.write.setRebalanceReserveAssets([10_000n]);
+    await pool.write.setRebalanceAssets([10_000n]);
 
     const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
       123_456n, // assets

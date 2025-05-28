@@ -8,16 +8,22 @@ import {ILinearTuner, IFlexPool} from "./interfaces/ILinearTuner.sol";
 
 contract LinearTuner is ILinearTuner {
     IFlexPool public immutable override pool;
+    uint256 public immutable override protocolFixed;
     uint256 public immutable override protocolPercent;
+    uint256 public immutable override rebalanceFixed;
     uint256 public immutable override rebalancePercent;
 
     constructor(
         IFlexPool pool_,
+        uint256 protocolFixed_,
         uint256 protocolPercent_,
+        uint256 rebalanceFixed_,
         uint256 rebalancePercent_
     ) {
         pool = pool_;
+        protocolFixed = protocolFixed_;
         protocolPercent = protocolPercent_;
+        rebalanceFixed = rebalanceFixed_;
         rebalancePercent = rebalancePercent_;
     }
 
@@ -28,7 +34,7 @@ contract LinearTuner is ILinearTuner {
         uint256 protocolAssets,
         int256 rebalanceAssets
     ) {
-        protocolAssets = PercentLib.applyPercent(assets_, protocolPercent);
+        protocolAssets = protocolFixed + PercentLib.applyPercent(assets_, protocolPercent);
 
         int256 equilibrium = pool.equilibriumAssets();
         if (equilibrium > 0) {
@@ -36,6 +42,8 @@ contract LinearTuner is ILinearTuner {
             rebalanceAssets -= int256(Math.mulDiv(pool.rebalanceAssets(), relieve, uint256(equilibrium)));
             assets_ -= relieve;
         }
-        rebalanceAssets += int256(PercentLib.applyPercent(assets_, rebalancePercent));
+        if (assets_ != 0) {
+            rebalanceAssets += int256(rebalanceFixed + PercentLib.applyPercent(assets_, rebalancePercent));
+        }
     }
 }

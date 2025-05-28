@@ -11,7 +11,9 @@ describe('LinearTuner', function () {
 
     const tuner = await hre.viem.deployContract('LinearTuner', [
       pool.address, // pool
+      100n, // protocolFixed
       parseEther('3.5'), // protocolPercent
+      200n, // rebalanceFixed
       parseEther('4.2'), // rebalancePercent
     ]);
 
@@ -37,8 +39,8 @@ describe('LinearTuner', function () {
       0n, // assets
       '0x', // data
     ]);
-    expect(protocolAssets).equal(0n);
-    expect(rebalanceAssets).equal(0n);
+    expect(protocolAssets).equal(100n); // 100 fixed
+    expect(rebalanceAssets).equal(0n); // No fixed: applied when > 0
   });
 
   it('Should tune for assets at equilibrium', async function () {
@@ -48,8 +50,8 @@ describe('LinearTuner', function () {
       123_456n, // assets
       '0x', // data
     ]);
-    expect(protocolAssets).equal(4_321n); // 4_320.96 ceil
-    expect(rebalanceAssets).equal(5_186n); // eq 0 -> -123_456, 5_185.152 ceil
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
+    expect(rebalanceAssets).equal(5_386n); // eq 0 -> -123_456, 5_185.152 ceil + 200 fixed
   });
 
   it('Should tune for assets at far negative equilibrium', async function () {
@@ -61,8 +63,8 @@ describe('LinearTuner', function () {
       123_456n, // assets
       '0x', // data
     ]);
-    expect(protocolAssets).equal(4_321n); // 4_320.96 ceil
-    expect(rebalanceAssets).equal(5_186n); // eq -400_000 -> -523_456, 5_185.152 ceil
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
+    expect(rebalanceAssets).equal(5_386n); // eq -400_000 -> -523_456, 5_185.152 ceil + 200 fixed
   });
 
   it('Should tune for assets at far positive equilibrium and empty rebalance assets', async function () {
@@ -74,7 +76,7 @@ describe('LinearTuner', function () {
       123_456n, // assets
       '0x', // data
     ]);
-    expect(protocolAssets).equal(4_321n); // 4_320.96 ceil
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
     expect(rebalanceAssets).equal(0n); // eq +400_000 -> +276_544, yet rewards empty
   });
 
@@ -88,7 +90,7 @@ describe('LinearTuner', function () {
       123_456n, // assets
       '0x', // data
     ]);
-    expect(protocolAssets).equal(4_321n); // 4_320.96 ceil
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
     expect(rebalanceAssets).equal(-3_086n); // eq +400_000 -> +276_544, -3_086.4 floor
   });
 
@@ -102,7 +104,7 @@ describe('LinearTuner', function () {
       123_456n, // assets
       '0x', // data
     ]);
-    expect(protocolAssets).equal(4_321n); // 4_320.96 ceil
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
     expect(rebalanceAssets).equal(-10_000n); // eq +123_456 -> 0, all rewards
   });
 
@@ -116,7 +118,7 @@ describe('LinearTuner', function () {
       123_456n, // assets
       '0x', // data
     ]);
-    expect(protocolAssets).equal(4_321n); // 4_320.96 ceil
-    expect(rebalanceAssets).equal(-8_510n); // eq +88_000 -> 0 -> -35_456, all rewards, 1489.152 ceil
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
+    expect(rebalanceAssets).equal(-8_310n); // eq +88_000 -> 0 -> -35_456, all rewards, 1489.152 ceil + 200 fixed
   });
 });

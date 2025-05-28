@@ -11,14 +11,13 @@ import {Controllable} from "../../control/Controllable.sol";
 import {DecimalsLib} from "../../util/libraries/DecimalsLib.sol";
 
 import {ITransferTaker, IERC20, IEventVerifier} from "./interfaces/ITransferTaker.sol";
+import {ITransferGiver} from "./interfaces/ITransferGiver.sol";
 
 import {TransferTakeData} from "./structs/TransferTakeData.sol";
 
 import {TransferGiveHashLib} from "./libraries/TransferGiveHashLib.sol";
 
 contract TransferTaker is ITransferTaker, AssetRescuer, Controllable {
-    bytes32 private constant TRANSFER_GIVE_EVENT_SIGNATURE = keccak256("TransferGive(bytes32)");
-
     IERC20 public immutable override asset;
     uint256 public immutable override giveChain;
     address public immutable override giveTransferGiver;
@@ -80,7 +79,7 @@ contract TransferTaker is ITransferTaker, AssetRescuer, Controllable {
 
     function _verifyGiveEvent(bytes32 giveHash_, bytes memory giveProof_) private {
         bytes32[] memory topics = new bytes32[](2);
-        topics[0] = TRANSFER_GIVE_EVENT_SIGNATURE;
+        topics[0] = ITransferGiver.TransferGive.selector;
         topics[1] = giveHash_;
         verifier.verifyEvent(giveChain, giveTransferGiver, topics, "", giveProof_);
     }

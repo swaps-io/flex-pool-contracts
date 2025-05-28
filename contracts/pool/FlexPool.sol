@@ -21,8 +21,6 @@ import {ITaker} from "../taker/interfaces/ITaker.sol";
 import {IFlexPool} from "./interfaces/IFlexPool.sol";
 
 contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescuer, Controllable, Multicall {
-    bytes32 private constant TAKE_EVENT_SIGNATURE = keccak256("Take(bytes32)");
-
     uint8 public immutable override decimalsOffset;
 
     uint256 public override rebalanceAssets;
@@ -85,7 +83,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
             emitter_ == address(this) &&
             data_.length == 0 &&
             topics_.length == 2 &&
-            topics_[0] == TAKE_EVENT_SIGNATURE &&
+            topics_[0] == Take.selector &&
             taken[topics_[1]],
             InvalidEvent(chain_, emitter_, topics_, data_)
         );

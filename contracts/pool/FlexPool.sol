@@ -66,7 +66,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
     }
 
     function equilibriumAssets() public view override returns (int256) {
-        return int256(currentAssets()) - int256(_totalAssets);
+        return int256(availableAssets()) - int256(_totalAssets);
     }
 
     function availableAssets() public view override returns (uint256) {

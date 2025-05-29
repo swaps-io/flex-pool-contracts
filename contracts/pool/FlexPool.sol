@@ -100,17 +100,19 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
         }
 
         uint256 rewardAssets = 0;
-        uint256 sendAssets = assets_;
+        uint256 takerAssets = assets_;
         if (rebalanceAssets_ > 0) {
             giveAssets += uint256(rebalanceAssets_);
             rebalanceAssets += uint256(rebalanceAssets_);
         } else {
             rewardAssets = uint256(-rebalanceAssets_);
-            sendAssets += rewardAssets;
+            takerAssets += rewardAssets;
             rebalanceAssets -= rewardAssets;
         }
 
-        _sendAssets(sendAssets, taker_);
+        SafeERC20.safeTransfer(IERC20(asset()), taker_, takerAssets);
+        _verifyAssets();
+
         ITaker(taker_).take{value: msg.value}(msg.sender, assets_, rewardAssets, giveAssets, takerData_);
         emit Take(taker_, assets_, protocolAssets, rebalanceAssets_);
     }
@@ -170,10 +172,5 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
 
     function _verifyAssets() private view {
         require(currentAssets() >= rebalanceAssets, RebalanceAffected(currentAssets(), rebalanceAssets));
-    }
-
-    function _sendAssets(uint256 assets_, address receiver_) private {
-        SafeERC20.safeTransfer(IERC20(asset()), receiver_, assets_);
-        _verifyAssets();
     }
 }

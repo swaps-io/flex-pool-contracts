@@ -27,21 +27,18 @@ contract FusionTaker is IFusionTaker, PoolAware, VerifierAware, AssetRescuer, Co
         verifier = verifier_;
     }
 
-    function identify(bytes calldata data_) public view override returns (bytes32 id) {
-        FusionTakeData calldata takeData = _decodeData(data_);
-        // TODO
-    }
-
     function take(
-        address caller_,
-        uint256 assets_,
-        uint256 rewardAssets_,
-        uint256 giveAssets_,
-        bytes32 id_,
+        address /* caller_ */,
+        uint256 /* assets_ */,
+        uint256 /* rewardAssets_ */,
+        uint256 /* giveAssets_ */,
         bytes calldata data_
     ) public payable override onlyPool {
-        FusionTakeData calldata takeData = _decodeData(data_);
-        // TODO
+        FusionTakeData calldata takeData;
+        assembly { takeData := add(data_.offset, 32) } // solhint-disable-line no-inline-assembly
+
+        // TODO: implement escrow logic
+        // TODO: consider taken storage logic
     }
 
     // ---
@@ -52,11 +49,5 @@ contract FusionTaker is IFusionTaker, PoolAware, VerifierAware, AssetRescuer, Co
 
     function _canRescueAsset(address /* asset_ */) internal pure override returns (bool) {
         return true; // Not designed to hold asset after transaction
-    }
-
-    // ---
-
-    function _decodeData(bytes calldata data_) private pure returns (FusionTakeData calldata takeData) {
-        assembly { takeData := add(data_.offset, 32) } // solhint-disable-line no-inline-assembly
     }
 }

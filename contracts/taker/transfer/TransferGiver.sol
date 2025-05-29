@@ -14,8 +14,6 @@ import {Controllable} from "../../control/Controllable.sol";
 
 import {ITransferGiver} from "./interfaces/ITransferGiver.sol";
 
-import {TransferGiveHashLib} from "./libraries/TransferGiveHashLib.sol";
-
 contract TransferGiver is ITransferGiver, PoolAware, AssetPermitter, AssetRescuer, Controllable {
     constructor(
         IFlexPool pool_,
@@ -26,14 +24,14 @@ contract TransferGiver is ITransferGiver, PoolAware, AssetPermitter, AssetRescue
         Controllable(controller_)
     {}
 
-    function give(uint256 assets_, uint256 takeChain_, address takeReceiver_) public override {
+    function give(uint256 assets_, uint256 takeChain_, address takeReceiver_, uint256 takeNonce_) public override {
         SafeERC20.safeTransferFrom(poolAsset, msg.sender, address(pool), assets_);
-        _emitGiveEvent(assets_, takeChain_, takeReceiver_);
+        _emitGiveEvent(assets_, takeChain_, takeReceiver_, takeNonce_);
     }
 
-    function giveHold(uint256 assets_, uint256 takeChain_, address takeReceiver_) public override {
+    function giveHold(uint256 assets_, uint256 takeChain_, address takeReceiver_, uint256 takeNonce_) public override {
         SafeERC20.safeTransfer(poolAsset, address(pool), assets_);
-        _emitGiveEvent(assets_, takeChain_, takeReceiver_);
+        _emitGiveEvent(assets_, takeChain_, takeReceiver_, takeNonce_);
     }
 
     // ---
@@ -48,8 +46,7 @@ contract TransferGiver is ITransferGiver, PoolAware, AssetPermitter, AssetRescue
 
     // ---
 
-    function _emitGiveEvent(uint256 assets_, uint256 takeChain_, address takeReceiver_) private {
-        bytes32 giveHash = TransferGiveHashLib.calc(assets_, block.number, takeChain_, takeReceiver_);
-        emit TransferGive(giveHash);
+    function _emitGiveEvent(uint256 assets_, uint256 takeChain_, address takeReceiver_, uint256 takeNonce_) private {
+        emit TransferGive(assets_, takeChain_, takeReceiver_, takeNonce_);
     }
 }

@@ -11,18 +11,15 @@ import {IAssetRescuer} from "../../rescue/interfaces/IAssetRescuer.sol";
 
 import {IControllable} from "../../control/Controllable.sol";
 
-import {IEventVerifier} from "../../verifier/interfaces/IEventVerifier.sol";
-
-interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IAssetRescuer, IControllable, IEventVerifier {
+interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IAssetRescuer, IControllable {
     // Event
 
-    event Take(bytes32 indexed id);
+    event Take(address indexed taker, uint256 assets, uint256 protocolAssets, int256 rebalanceAssets);
     event TunerUpdate(address indexed taker, address indexed oldTuner, address indexed newTuner);
 
     // Error
 
     error NoTuner(address taker);
-    error AlreadyTaken(bytes32 id);
     error RebalanceAffected(uint256 assets, uint256 minAssets);
     error SameTuner(address taker, address tuner);
     error InvalidEvent(uint256 chain, address emitter, bytes32[] topics, bytes data);
@@ -40,8 +37,6 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IAssetRescuer, I
     function rebalanceAssets() external view returns (uint256);
 
     function tuner(address taker) external view returns (address);
-
-    function taken(bytes32 id) external view returns (bool);
 
     function clampAssetsToAvailable(uint256 assets) external view returns (uint256);
 

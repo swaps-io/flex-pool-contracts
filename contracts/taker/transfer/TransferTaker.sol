@@ -3,6 +3,7 @@
 pragma solidity ^0.8.26;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
 import {PoolAware, IFlexPool} from "../../pool/aware/PoolAware.sol";
 
@@ -19,12 +20,12 @@ import {ITransferGiver} from "./interfaces/ITransferGiver.sol";
 
 import {TransferTakeData} from "./structs/TransferTakeData.sol";
 
-import {TransferGiveHashLib} from "./libraries/TransferGiveHashLib.sol";
-
 contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer, Controllable {
     uint256 public immutable override giveChain;
     address public immutable override giveTransferGiver;
     int256 public immutable override giveDecimalsShift;
+
+    mapping(address receiver => BitMaps.BitMap) private _takenData;
 
     constructor(
         IFlexPool pool_,
@@ -43,9 +44,8 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
         giveDecimalsShift = giveDecimalsShift_;
     }
 
-    function identify(bytes calldata data_) public view override returns (bytes32 id) {
-        TransferTakeData calldata takeData = _decodeData(data_);
-        return TransferGiveHashLib.calc(takeData.giveAssets, takeData.giveBlock, block.chainid, takeData.takeReceiver);
+    function taken(address receiver_, uint256 nonce_) public view override returns (bool) {
+        return BitMaps.get(_takenData[receiver_], nonce_);
     }
 
     function take(
@@ -53,12 +53,14 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
         uint256 assets_,
         uint256 rewardAssets_,
         uint256 giveAssets_,
-        bytes32 id_,
         bytes calldata data_
     ) public payable override onlyPool {
-        TransferTakeData calldata takeData = _decodeData(data_);
+        TransferTakeData calldata takeData;
+        assembly { takeData := add(data_.offset, 32) } // solhint-disable-line no-inline-assembly
+
         _verifyGiveAssets(giveAssets_, takeData.giveAssets);
-        _verifyGiveEvent(id_, takeData.giveProof);
+        _verifyGiveEvent(takeData.giveAssets, takeData.takeReceiver, takeData.takeNonce, takeData.giveProof);
+        _transitToTaken(takeData.takeReceiver, takeData.takeNonce);
         SafeERC20.safeTransfer(poolAsset, takeData.takeReceiver, assets_ + rewardAssets_);
     }
 
@@ -79,14 +81,15 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
         require(commonGiveAssets >= commonAssets, InsufficientGiveAssets(commonGiveAssets, commonAssets));
     }
 
-    function _verifyGiveEvent(bytes32 giveHash_, bytes memory giveProof_) private {
-        bytes32[] memory topics = new bytes32[](2);
-        topics[0] = ITransferGiver.TransferGive.selector;
-        topics[1] = giveHash_;
-        verifier.verifyEvent(giveChain, giveTransferGiver, topics, "", giveProof_);
+    function _transitToTaken(address receiver_, uint256 nonce_) private {
+        require(!taken(receiver_, nonce_), AlreadyTaken(receiver_, nonce_));
+        BitMaps.set(_takenData[receiver_], nonce_);
     }
 
-    function _decodeData(bytes calldata data_) private pure returns (TransferTakeData calldata takeData) {
-        assembly { takeData := add(data_.offset, 32) } // solhint-disable-line no-inline-assembly
+    function _verifyGiveEvent(uint256 assets_, address receiver_, uint256 nonce_, bytes memory proof_) private {
+        bytes32[] memory topics = new bytes32[](1);
+        topics[0] = ITransferGiver.TransferGive.selector;
+        bytes memory data = abi.encode(assets_, block.chainid, receiver_, nonce_);
+        verifier.verifyEvent(giveChain, giveTransferGiver, topics, data, proof_);
     }
 }

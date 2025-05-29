@@ -14,28 +14,25 @@ struct TestTakeData {
 }
 
 contract TestTaker is ITaker {
-    error InvalidId(bytes32 id, bytes32 expectedId);
+    error AlreadyTaken(bytes32 id);
     error InvalidCaller(address caller, address expectedCaller);
     error InvalidAssets(uint256 assets, uint256 expectedAssets);
     error InvalidRewardAssets(uint256 assets, uint256 expectedAssets);
     error InvalidGiveAssets(uint256 assets, uint256 expectedAssets);
     error InvalidValue(uint256 value, uint256 expectedValue);
 
-    function identify(bytes calldata data_) public pure override returns (bytes32 id) {
-        TestTakeData calldata testData = _decodeData(data_);
-        return testData.id;
-    }
+    mapping(bytes32 id => bool) public taken;
 
     function take(
         address caller_,
         uint256 assets_,
         uint256 rewardAssets_,
         uint256 giveAssets_,
-        bytes32 id_,
         bytes calldata data_
     ) public payable override {
         TestTakeData calldata testData = _decodeData(data_);
-        require(id_ == testData.id, InvalidId(id_, testData.id));
+        require(!taken[testData.id], AlreadyTaken(testData.id));
+        taken[testData.id] = true;
         require(caller_ == testData.caller, InvalidCaller(caller_, testData.caller));
         require(assets_ == testData.assets, InvalidAssets(assets_, testData.assets));
         require(rewardAssets_ == testData.rewardAssets, InvalidRewardAssets(rewardAssets_, testData.rewardAssets));

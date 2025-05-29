@@ -1,14 +1,21 @@
 import { loadFixture, } from '@nomicfoundation/hardhat-toolbox-viem/network-helpers';
 import hre from 'hardhat';
 import { expect } from 'chai';
-import { encodeAbiParameters, getAbiItem, keccak256, maxUint256, parseAbiParameters, parseEventLogs, toEventSelector, zeroAddress } from 'viem';
+import {
+  checksumAddress,
+  encodeAbiParameters,
+  encodeEventTopics,
+  getAbiItem,
+  Hex,
+  maxUint256,
+  parseAbiParameters,
+  parseEventLogs,
+  zeroAddress,
+} from 'viem';
 
-const TRANSFER_GIVE_HASH_DATA_ABI = parseAbiParameters([
-  'uint256 giveAssets, uint256 giveBlock, uint256 takeChain, address takeReceiver',
-]);
 const TRANSFER_TAKE_DATA_ABI = parseAbiParameters([
   'TransferTakeData',
-  'struct TransferTakeData { uint256 giveAssets; uint256 giveBlock; address takeReceiver; bytes giveProof; }',
+  'struct TransferTakeData { uint256 giveAssets; address takeReceiver; uint256 takeNonce; bytes giveProof; }',
 ]);
 const TEST_TUNE_DATA_ABI = parseAbiParameters([
   'TestTuneData',
@@ -134,25 +141,22 @@ describe('TransferTaker', function () {
         123_456n, // assets
         31_337n, // takeChain
         '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef', // takeReceiver
+        0n, // takeNonce
       ],
     });
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
     console.log(`TransferGiver.give gas: ${receipt.gasUsed}`);
 
-    const giveHash = keccak256(encodeAbiParameters(TRANSFER_GIVE_HASH_DATA_ABI, [
-      123_456n, // giveAssets
-      receipt.blockNumber, // giveBlock
-      31_337n, // takeChain
-      '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef', // takeReceiver
-    ]));
-
     const logs = parseEventLogs({
       abi: giver.abi,
       logs: receipt.logs,
       eventName: 'TransferGive',
       args: {
-        giveHash,
+        assets: 123_456n,
+        takeChain: 31_337n,
+        takeReceiver: '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+        takeNonce: 0n,
       },
     });
     expect(logs.length).equal(1);
@@ -198,25 +202,22 @@ describe('TransferTaker', function () {
         123_456n, // assets
         31_337n, // takeChain
         '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef', // takeReceiver
+        0n, // takeNonce
       ],
     });
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
     console.log(`TransferGiver.giveHold gas: ${receipt.gasUsed}`);
 
-    const giveHash = keccak256(encodeAbiParameters(TRANSFER_GIVE_HASH_DATA_ABI, [
-      123_456n, // giveAssets
-      receipt.blockNumber, // giveBlock
-      31_337n, // takeChain
-      '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef', // takeReceiver
-    ]));
-
     const logs = parseEventLogs({
       abi: giver.abi,
       logs: receipt.logs,
       eventName: 'TransferGive',
       args: {
-        giveHash,
+        assets: 123_456n,
+        takeChain: 31_337n,
+        takeReceiver: '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+        takeNonce: 0n,
       },
     });
     expect(logs.length).equal(1);
@@ -236,23 +237,17 @@ describe('TransferTaker', function () {
     const { publicClient, regularClient, ownerClient, taker, takerAsset, takerPool, giver, verifier } = await loadFixture(deployFixture);
 
     const giveAssets = 123_486n;
-    const giveBlock = 111_111n;
+    const takeNonce = 0n;
     const takeAssets = 123_456_000n; // = (giveAssets - protocolAssets - rebalanceAssets) in +3 decimals
     const protocolAssets = 10_000n;
     const rebalanceAssets = 20_000n;
-    const poolInitAssets = takeAssets * 2n;
+    const poolInitAssets = takeAssets * 5n;
     const takeReceiver = '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
-    const giveHash = keccak256(encodeAbiParameters(TRANSFER_GIVE_HASH_DATA_ABI, [
-      giveAssets, // giveAssets
-      giveBlock, // giveBlock
-      31_337n, // takeChain
-      takeReceiver, // takeReceiver
-    ]));
     const giveProof = '0x0123456780abcdef';
     const takerData = encodeAbiParameters(TRANSFER_TAKE_DATA_ABI, [{
       giveAssets,
-      giveBlock,
       takeReceiver,
+      takeNonce,
       giveProof,
     }]);
     const tunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
@@ -262,11 +257,12 @@ describe('TransferTaker', function () {
     }]);
 
     expect(await publicClient.readContract({
-      abi: takerPool.abi,
-      address: takerPool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'taken',
       args: [
-        giveHash, // id
+        takeReceiver, // receiver
+        takeNonce, // nonce
       ],
     })).equal(false);
 
@@ -292,6 +288,22 @@ describe('TransferTaker', function () {
       ],
     })).rejectedWith('InvalidEvent');
 
+    const transferGiveTopics = encodeEventTopics({
+      abi: giver.abi,
+      eventName: 'TransferGive',
+    }) as Hex[];
+    const transferGiveData = encodeAbiParameters(
+      getAbiItem({
+        abi: giver.abi,
+        name: 'TransferGive',
+      }).inputs,
+      [
+        giveAssets, // assets
+        31_337n, // takeChain
+        takeReceiver, // takeReceiver
+        takeNonce, // takeNonce
+      ],
+    );
     await ownerClient.writeContract({
       abi: verifier.abi,
       address: verifier.address,
@@ -299,14 +311,8 @@ describe('TransferTaker', function () {
       args: [
         55_555n, // chain
         giver.address, // emitter
-        [
-          toEventSelector(getAbiItem({
-            abi: giver.abi,
-            name: 'TransferGive',
-          })),
-          giveHash,
-        ], // topics
-        '0x', // data
+        transferGiveTopics, // topics
+        transferGiveData, // data
         giveProof, // proof
         true, // verified
       ],
@@ -325,11 +331,12 @@ describe('TransferTaker', function () {
     });
 
     expect(await publicClient.readContract({
-      abi: takerPool.abi,
-      address: takerPool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'taken',
       args: [
-        giveHash, // id
+        takeReceiver, // receiver
+        takeNonce, // nonce
       ],
     })).equal(true);
 
@@ -341,7 +348,10 @@ describe('TransferTaker', function () {
       logs: receipt.logs,
       eventName: 'Take',
       args: {
-        id: giveHash,
+        taker: taker.address,
+        assets: takeAssets,
+        protocolAssets,
+        rebalanceAssets,
       },
     });
     expect(logs.length).equal(1);
@@ -384,6 +394,215 @@ describe('TransferTaker', function () {
         takerData, // takerData
         tunerData, // tunerData
       ],
-    })).rejectedWith(`AlreadyTaken("${giveHash}")`);
+    })).rejectedWith(`AlreadyTaken("${checksumAddress(takeReceiver)}", ${takeNonce})`);
+  });
+
+  it('Should take pool asset using give proof second time', async function () {
+    const { publicClient, regularClient, ownerClient, taker, takerAsset, takerPool, giver, verifier } = await loadFixture(deployFixture);
+
+    const giveAssets = 123_486n;
+    const takeNonce = 0n;
+    const takeNonce2 = takeNonce + 1n;
+    const takeAssets = 123_456_000n; // = (giveAssets - protocolAssets - rebalanceAssets) in +3 decimals
+    const protocolAssets = 10_000n;
+    const rebalanceAssets = 20_000n;
+    const poolInitAssets = takeAssets * 5n;
+    const takeReceiver = '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
+    const giveProof = '0x0123456780abcdef';
+    const takerData = encodeAbiParameters(TRANSFER_TAKE_DATA_ABI, [{
+      giveAssets,
+      takeReceiver,
+      takeNonce,
+      giveProof,
+    }]);
+    const takerData2 = encodeAbiParameters(TRANSFER_TAKE_DATA_ABI, [{
+      giveAssets,
+      takeReceiver,
+      takeNonce: takeNonce2,
+      giveProof,
+    }]);
+    const tunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
+      assets: takeAssets,
+      protocolAssets,
+      rebalanceAssets,
+    }]);
+
+    expect(await publicClient.readContract({
+      abi: taker.abi,
+      address: taker.address,
+      functionName: 'taken',
+      args: [
+        takeReceiver, // receiver
+        takeNonce2, // nonce
+      ],
+    })).equal(false);
+
+    await ownerClient.writeContract({
+      abi: takerAsset.abi,
+      address: takerAsset.address,
+      functionName: 'mint',
+      args: [
+        takerPool.address, // account
+        poolInitAssets, // assets
+      ],
+    });
+
+    const transferGiveTopics = encodeEventTopics({
+      abi: giver.abi,
+      eventName: 'TransferGive',
+    }) as Hex[];
+    const transferGiveData = encodeAbiParameters(
+      getAbiItem({
+        abi: giver.abi,
+        name: 'TransferGive',
+      }).inputs,
+      [
+        giveAssets, // assets
+        31_337n, // takeChain
+        takeReceiver, // takeReceiver
+        takeNonce, // takeNonce
+      ],
+    );
+    await ownerClient.writeContract({
+      abi: verifier.abi,
+      address: verifier.address,
+      functionName: 'setEventVerified',
+      args: [
+        55_555n, // chain
+        giver.address, // emitter
+        transferGiveTopics, // topics
+        transferGiveData, // data
+        giveProof, // proof
+        true, // verified
+      ],
+    });
+
+    // First
+    await regularClient.writeContract({
+      abi: takerPool.abi,
+      address: takerPool.address,
+      functionName: 'take',
+      args: [
+        takeAssets, // assets
+        taker.address, // taker
+        takerData, // takerData
+        tunerData, // tunerData
+      ],
+    });
+
+    expect(await publicClient.readContract({
+      abi: taker.abi,
+      address: taker.address,
+      functionName: 'taken',
+      args: [
+        takeReceiver, // receiver
+        takeNonce2, // nonce
+      ],
+    })).equal(false);
+
+    const transferGiveData2 = encodeAbiParameters(
+      getAbiItem({
+        abi: giver.abi,
+        name: 'TransferGive',
+      }).inputs,
+      [
+        giveAssets, // assets
+        31_337n, // takeChain
+        takeReceiver, // takeReceiver
+        takeNonce2, // takeNonce
+      ],
+    );
+    await ownerClient.writeContract({
+      abi: verifier.abi,
+      address: verifier.address,
+      functionName: 'setEventVerified',
+      args: [
+        55_555n, // chain
+        giver.address, // emitter
+        transferGiveTopics, // topics
+        transferGiveData2, // data
+        giveProof, // proof
+        true, // verified
+      ],
+    });
+
+    // Second
+    const hash = await regularClient.writeContract({
+      abi: takerPool.abi,
+      address: takerPool.address,
+      functionName: 'take',
+      args: [
+        takeAssets, // assets
+        taker.address, // taker
+        takerData2, // takerData
+        tunerData, // tunerData
+      ],
+    });
+
+    expect(await publicClient.readContract({
+      abi: taker.abi,
+      address: taker.address,
+      functionName: 'taken',
+      args: [
+        takeReceiver, // receiver
+        takeNonce2, // nonce
+      ],
+    })).equal(true);
+
+    const receipt = await publicClient.getTransactionReceipt({ hash });
+    console.log(`Pool.take with TransferTaker.take second gas: ${receipt.gasUsed}`);
+
+    const logs = parseEventLogs({
+      abi: takerPool.abi,
+      logs: receipt.logs,
+      eventName: 'Take',
+      args: {
+        taker: taker.address,
+        assets: takeAssets,
+        protocolAssets,
+        rebalanceAssets,
+      },
+    });
+    expect(logs.length).equal(1);
+
+    const receiverBalance = await publicClient.readContract({
+      abi: takerAsset.abi,
+      address: takerAsset.address,
+      functionName: 'balanceOf',
+      args: [
+        takeReceiver, // account
+      ],
+    });
+    expect(receiverBalance).equal(takeAssets * 2n);
+
+    const poolBalance = await publicClient.readContract({
+      abi: takerAsset.abi,
+      address: takerAsset.address,
+      functionName: 'balanceOf',
+      args: [
+        takerPool.address, // account
+      ],
+    });
+    expect(poolBalance).equal(poolInitAssets - takeAssets * 2n);
+
+    const poolRebalanceAssets = await publicClient.readContract({
+      abi: takerPool.abi,
+      address: takerPool.address,
+      functionName: 'rebalanceAssets',
+      args: [],
+    });
+    expect(poolRebalanceAssets).equal(rebalanceAssets * 2n);
+
+    await expect(regularClient.writeContract({
+      abi: takerPool.abi,
+      address: takerPool.address,
+      functionName: 'take',
+      args: [
+        takeAssets, // assets
+        taker.address, // taker
+        takerData2, // takerData
+        tunerData, // tunerData
+      ],
+    })).rejectedWith(`AlreadyTaken("${checksumAddress(takeReceiver)}", ${takeNonce2})`);
   });
 });

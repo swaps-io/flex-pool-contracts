@@ -11,9 +11,9 @@ import {IAssetRescuer} from "../../../rescue/interfaces/IAssetRescuer.sol";
 import {IControllable} from "../../../control/interfaces/IControllable.sol";
 
 interface ITransferGiver is IPoolAware, IAssetPermitter, IAssetRescuer, IControllable {
-    event TransferGive(bytes32 indexed giveHash);
+    event TransferGive(uint256 assets, uint256 takeChain, address takeReceiver, uint256 takeNonce);
 
-    function give(uint256 assets, uint256 takeChain, address takeReceiver) external;
+    function give(uint256 assets, uint256 takeChain, address takeReceiver, uint256 takeNonce) external;
 
-    function giveHold(uint256 assets, uint256 takeChain, address takeReceiver) external;
+    function giveHold(uint256 assets, uint256 takeChain, address takeReceiver, uint256 takeNonce) external;
 }

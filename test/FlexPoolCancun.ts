@@ -12,7 +12,7 @@ const TEST_TAKE_DATA_ABI = parseAbiParameters([
   'struct TestTakeData { bytes32 id; address caller; uint256 assets; uint256 rewardAssets; uint256 giveAssets; uint256 value; }',
 ]);
 
-describe('FlexPool', function () {
+describe('FlexPoolCancun', function () {
   async function deployFixture() {
     const publicClient = await hre.viem.getPublicClient();
     const [ownerClient, regularClient] = await hre.viem.getWalletClients();
@@ -23,7 +23,7 @@ describe('FlexPool', function () {
       6, // decimals
     ]);
 
-    const pool = await hre.viem.deployContract('FlexPool', [
+    const pool = await hre.viem.deployContract('FlexPoolCancun', [
       asset.address, // asset
       'Pool Test Token', // name
       'PTT', // symbol
@@ -112,7 +112,7 @@ describe('FlexPool', function () {
     });
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.setTuner add gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.setTuner add gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -155,7 +155,7 @@ describe('FlexPool', function () {
     });
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.setTuner update gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.setTuner update gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -197,7 +197,7 @@ describe('FlexPool', function () {
     });
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.setTuner remove gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.setTuner remove gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -282,7 +282,7 @@ describe('FlexPool', function () {
     })).equal(true);
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.take test gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.take test gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -332,7 +332,7 @@ describe('FlexPool', function () {
     });
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.deposit gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.deposit gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -456,7 +456,7 @@ describe('FlexPool', function () {
     });
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.deposit second gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.deposit second gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -579,7 +579,7 @@ describe('FlexPool', function () {
     });
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.withdraw partial gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.withdraw partial gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -716,7 +716,7 @@ describe('FlexPool', function () {
     });
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.withdraw second partial gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.withdraw second partial gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -884,7 +884,7 @@ describe('FlexPool', function () {
     })).equal(true);
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.take deposit gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.take deposit gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -1085,7 +1085,7 @@ describe('FlexPool', function () {
     })).equal(true);
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.take deposit second gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.take deposit second gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -1292,7 +1292,7 @@ describe('FlexPool', function () {
     })).equal(true);
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.take deposit second reward gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.take deposit second reward gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -1677,7 +1677,7 @@ describe('FlexPool', function () {
     });
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.withdrawAvailable gas: ${receipt.gasUsed}`);
+    console.log(`FlexPoolCancun.withdrawAvailable gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,

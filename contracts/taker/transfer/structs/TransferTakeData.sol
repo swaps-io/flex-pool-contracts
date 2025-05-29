@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 
 struct TransferTakeData {
     uint256 giveAssets;
-    uint256 giveBlock;
     address takeReceiver;
+    uint256 takeNonce;
     bytes giveProof;
 }

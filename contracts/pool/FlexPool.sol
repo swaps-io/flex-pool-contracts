@@ -14,18 +14,19 @@ import {AssetRescuer} from "../rescue/AssetRescuer.sol";
 
 import {Controllable} from "../control/Controllable.sol";
 
+import {Guard} from "../guard/Guard.sol";
+
 import {ITuner} from "../tuner/interfaces/ITuner.sol";
 
 import {ITaker} from "../taker/interfaces/ITaker.sol";
 
 import {IFlexPool} from "./interfaces/IFlexPool.sol";
 
-contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescuer, Controllable, Multicall {
+contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescuer, Controllable, Guard, Multicall {
     uint8 public immutable override decimalsOffset;
 
     uint256 public override rebalanceAssets;
     mapping(address taker => address) public override tuner;
-    mapping(bytes32 id => bool) public override taken;
 
     uint256 private _totalAssets;
 
@@ -71,24 +72,6 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
         return currentAssets() - rebalanceAssets; // Non-negativeness ensured by `_verifyAssets`
     }
 
-    function verifyEvent(
-        uint256 chain_,
-        address emitter_,
-        bytes32[] calldata topics_,
-        bytes calldata data_,
-        bytes calldata /* proof */
-    ) public view override {
-        require(
-            chain_ == block.chainid &&
-            emitter_ == address(this) &&
-            data_.length == 0 &&
-            topics_.length == 2 &&
-            topics_[0] == Take.selector &&
-            taken[topics_[1]],
-            InvalidEvent(chain_, emitter_, topics_, data_)
-        );
-    }
-
     function clampAssetsToAvailable(uint256 assets_) public view override returns (uint256) {
         return Math.min(assets_, availableAssets());
     }
@@ -104,36 +87,32 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
         address taker_,
         bytes calldata takerData_,
         bytes calldata tunerData_
-    ) public payable override {
+    ) public payable override guard {
         address tuner_ = tuner[taker_];
         require(tuner_ != address(0), NoTuner(taker_));
 
-        bytes32 id = ITaker(taker_).identify(takerData_);
-        require(!taken[id], AlreadyTaken(id));
-        taken[id] = true;
-
-        (uint256 tuneProtocolAssets, int256 tuneRebalanceAssets) = ITuner(tuner_).tune(assets_, tunerData_);
+        (uint256 protocolAssets, int256 rebalanceAssets_) = ITuner(tuner_).tune(assets_, tunerData_);
 
         uint256 giveAssets = assets_;
-        if (tuneProtocolAssets != 0) {
-            giveAssets += tuneProtocolAssets;
-            _totalAssets += tuneProtocolAssets;
+        if (protocolAssets != 0) {
+            giveAssets += protocolAssets;
+            _totalAssets += protocolAssets;
         }
 
         uint256 rewardAssets = 0;
         uint256 sendAssets = assets_;
-        if (tuneRebalanceAssets > 0) {
-            giveAssets += uint256(tuneRebalanceAssets);
-            rebalanceAssets += uint256(tuneRebalanceAssets);
+        if (rebalanceAssets_ > 0) {
+            giveAssets += uint256(rebalanceAssets_);
+            rebalanceAssets += uint256(rebalanceAssets_);
         } else {
-            rewardAssets = uint256(-tuneRebalanceAssets);
+            rewardAssets = uint256(-rebalanceAssets_);
             sendAssets += rewardAssets;
             rebalanceAssets -= rewardAssets;
         }
 
         _sendAssets(sendAssets, taker_);
-        ITaker(taker_).take{value: msg.value}(msg.sender, assets_, rewardAssets, giveAssets, id, takerData_);
-        emit Take(id);
+        ITaker(taker_).take{value: msg.value}(msg.sender, assets_, rewardAssets, giveAssets, takerData_);
+        emit Take(taker_, assets_, protocolAssets, rebalanceAssets_);
     }
 
     function withdrawAvailable(uint256 assets_, address receiver_, address owner_) public override returns (uint256) {

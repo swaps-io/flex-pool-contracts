@@ -1128,11 +1128,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:*":
-  version: 22.15.23
-  resolution: "@types/node@npm:22.15.23"
+  version: 22.15.24
+  resolution: "@types/node@npm:22.15.24"
   dependencies:
     undici-types: "npm:~6.21.0"
-  checksum: 10c0/e3ae0629dfb4357dad2a7838c481656abf089d852d83f0d0f14368f03ad21ce276cbecfdf62be2276ef39920db6b114e5bc8d87c37714bbab9aefb0ce1eb1473
+  checksum: 10c0/16c38e98168fa6c3d2f2b6e95f14f80878d969b39093bc5384385a884d73a7fe361c563b36f14bc27536b337f5baad74321f717b31d2c061b9c48074567eb8c6
   languageName: node
   linkType: hard
 
@@ -2571,7 +2571,7 @@ __metadata:
     solidity-coverage: "npm:0.8.16"
     ts-node: "npm:10.9.2"
     typescript: "npm:5.8.3"
-    viem: "npm:2.30.2"
+    viem: "npm:2.30.5"
   languageName: unknown
   linkType: soft
 
@@ -5481,9 +5481,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:2.30.2, viem@npm:^2.27.0":
-  version: 2.30.2
-  resolution: "viem@npm:2.30.2"
+"viem@npm:2.30.5, viem@npm:^2.27.0":
+  version: 2.30.5
+  resolution: "viem@npm:2.30.5"
   dependencies:
     "@noble/curves": "npm:1.9.1"
     "@noble/hashes": "npm:1.8.0"
@@ -5498,7 +5498,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/59e903cad56eba235fe8cb579929e90603a02d9236632c7d4d768c737bb42f6a2c479ecb26d52bbd73bce0653fdf9992e160af6d805ca866bcb320c23239b7b6
+  checksum: 10c0/c183004caac620ef12239b650799bd8aa4d9accb24b7986cc7262c3aa2cb76734d1c78651399931eef762d85ece3c08bc20e80e21189312dc5d1f740c3febed0
   languageName: node
   linkType: hard
 

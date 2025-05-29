@@ -12,4 +12,8 @@ import {IControllable} from "../../../control/interfaces/IControllable.sol";
 
 import {ITaker} from "../../interfaces/ITaker.sol";
 
-interface IFusionTaker is ITaker, IPoolAware, IVerifierAware, IAssetRescuer, IControllable {}
+interface IFusionTaker is ITaker, IPoolAware, IVerifierAware, IAssetRescuer, IControllable {
+    function srcEscrowChain() external view returns (uint256);
+
+    function srcEscrowFactory() external view returns (address);
+}

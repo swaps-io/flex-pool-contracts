@@ -12,19 +12,25 @@ import {Controllable} from "../../control/Controllable.sol";
 
 import {IFusionTaker} from "./interfaces/IFusionTaker.sol";
 
-import {FusionTakeData} from "./structs/FusionTakeData.sol";
+import {FusionTakeData, IEscrowFactory, IBaseEscrow} from "./structs/FusionTakeData.sol";
 
 contract FusionTaker is IFusionTaker, PoolAware, VerifierAware, AssetRescuer, Controllable {
+    uint256 public immutable override srcEscrowChain;
+    address public immutable override srcEscrowFactory;
+
     constructor(
         IFlexPool pool_,
         IEventVerifier verifier_,
-        address controller_
+        address controller_,
+        uint256 srcEscrowChain_,
+        address srcEscrowFactory_
     )
         PoolAware(pool_)
         VerifierAware(verifier_)
         Controllable(controller_)
     {
-        verifier = verifier_;
+        srcEscrowChain = srcEscrowChain_;
+        srcEscrowFactory = srcEscrowFactory_;
     }
 
     function take(
@@ -37,8 +43,8 @@ contract FusionTaker is IFusionTaker, PoolAware, VerifierAware, AssetRescuer, Co
         FusionTakeData calldata takeData;
         assembly { takeData := add(data_.offset, 32) } // solhint-disable-line no-inline-assembly
 
-        // TODO: implement escrow logic
-        // TODO: consider taken storage logic
+        _verifyGiveEvent(takeData.srcImmutables, takeData.dstImmutablesComplement, takeData.srcEscrowCreatedProof);
+        // TODO: implement
     }
 
     // ---
@@ -49,5 +55,18 @@ contract FusionTaker is IFusionTaker, PoolAware, VerifierAware, AssetRescuer, Co
 
     function _canRescueAsset(address /* asset_ */) internal pure override returns (bool) {
         return true; // Not designed to hold asset after transaction
+    }
+
+    // ---
+
+    function _verifyGiveEvent(
+        IBaseEscrow.Immutables calldata srcImmutables_,
+        IEscrowFactory.DstImmutablesComplement calldata dstImmutablesComplement_,
+        bytes memory proof_
+    ) private {
+        bytes32[] memory topics = new bytes32[](1);
+        topics[0] = IEscrowFactory.SrcEscrowCreated.selector;
+        bytes memory data = abi.encode(srcImmutables_, dstImmutablesComplement_);
+        verifier.verifyEvent(srcEscrowChain, srcEscrowFactory, topics, data, proof_);
     }
 }

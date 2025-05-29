@@ -1735,4 +1735,145 @@ describe('FlexPoolCancun', function () {
     });
     expect(poolRebalanceAssets).equal(rebalanceAssets);
   });
+  
+    it('Should perform rebalance donation after take of deposit', async function () {
+      const { asset, pool, taker, tuner, publicClient, regularClient, ownerClient } = await loadFixture(deployFixture);
+  
+      const id = '0x1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d';
+      const depositAssets = 5_000_000_000n;
+      const mintAssets = depositAssets + 3_000_000_000n;
+      const value = 123_456n;
+      const assets = 133_701_337n;
+      const protocolAssets = 3_302n;
+      const rebalanceAssets = 137_137n;
+      const rebalanceDonationAssets = 676_767n;
+      const takerData = encodeAbiParameters(TEST_TAKE_DATA_ABI, [{
+        id,
+        caller: regularClient.account.address,
+        assets,
+        rewardAssets: 0n,
+        giveAssets: assets + protocolAssets + rebalanceAssets,
+        value,
+      }]);
+      const tunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
+        assets,
+        protocolAssets,
+        rebalanceAssets,
+      }]);
+  
+      await ownerClient.writeContract({
+        abi: asset.abi,
+        address: asset.address,
+        functionName: 'mint',
+        args: [
+          regularClient.account.address, // account
+          mintAssets, // assets
+        ],
+      });
+      await regularClient.writeContract({
+        abi: asset.abi,
+        address: asset.address,
+        functionName: 'approve',
+        args: [
+          pool.address, // spender
+          depositAssets + rebalanceDonationAssets, // value
+        ],
+      });
+      await regularClient.writeContract({
+        abi: pool.abi,
+        address: pool.address,
+        functionName: 'deposit',
+        args: [
+          depositAssets, // assets
+          regularClient.account.address, // receiver
+        ],
+      });
+      await ownerClient.writeContract({
+        abi: pool.abi,
+        address: pool.address,
+        functionName: 'setTuner',
+        args: [
+          taker.address, // taker
+          tuner.address, // tuner
+        ],
+      });
+  
+      await regularClient.writeContract({
+        abi: pool.abi,
+        address: pool.address,
+        functionName: 'take',
+        args: [
+          assets, // assets
+          taker.address, // taker
+          takerData, // takerData
+          tunerData, // tunerData
+        ],
+        value,
+      });
+  
+      const hash = await regularClient.writeContract({
+        abi: pool.abi,
+        address: pool.address,
+        functionName: 'donateRebalance',
+        args: [
+          rebalanceDonationAssets, // assets
+        ],
+      });
+  
+      const receipt = await publicClient.getTransactionReceipt({ hash });
+      console.log(`FlexPoolCancun.donateRebalance gas: ${receipt.gasUsed}`);
+  
+      const logs = parseEventLogs({
+        abi: pool.abi,
+        logs: receipt.logs,
+        eventName: 'RebalanceDonation',
+        args: {
+          donor: regularClient.account.address,
+          assets: rebalanceDonationAssets,
+        },
+      });
+      expect(logs.length).equal(1);
+  
+      const poolAssets = await publicClient.readContract({
+        abi: asset.abi,
+        address: asset.address,
+        functionName: 'balanceOf',
+        args: [
+          pool.address, // account
+        ],
+      });
+      expect(poolAssets).equal(depositAssets - assets + rebalanceDonationAssets);
+  
+      const poolCurrentAssets = await publicClient.readContract({
+        abi: pool.abi,
+        address: pool.address,
+        functionName: 'currentAssets',
+        args: [],
+      });
+      expect(poolCurrentAssets).equal(depositAssets - assets + rebalanceDonationAssets);
+  
+      const poolEquilibriumAssets = await publicClient.readContract({
+        abi: pool.abi,
+        address: pool.address,
+        functionName: 'equilibriumAssets',
+        args: [],
+      });
+      expect(poolEquilibriumAssets).equal(-(assets + protocolAssets + rebalanceAssets));
+  
+      const poolAvailableAssets = await publicClient.readContract({
+        abi: pool.abi,
+        address: pool.address,
+        functionName: 'availableAssets',
+        args: [],
+      });
+      expect(poolAvailableAssets).equal(depositAssets - (assets + rebalanceAssets));
+  
+      const poolRebalanceAssets = await publicClient.readContract({
+        abi: pool.abi,
+        address: pool.address,
+        functionName: 'rebalanceAssets',
+        args: [],
+      });
+      expect(poolRebalanceAssets).equal(rebalanceAssets + rebalanceDonationAssets);
+    });
 });

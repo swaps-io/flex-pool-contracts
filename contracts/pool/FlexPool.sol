@@ -125,6 +125,12 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
         return redeem(clampSharesToAvailable(shares_), receiver_, owner_);
     }
 
+    function donateRebalance(uint256 assets_) public override {
+        SafeERC20.safeTransferFrom(IERC20(asset()), msg.sender, address(this), assets_);
+        rebalanceAssets += assets_;
+        emit RebalanceDonation(msg.sender, assets_);
+    }
+
     function setTuner(address taker_, address tuner_) public override onlyController {
         address oldTuner = tuner[taker_];
         require(tuner_ != oldTuner, SameTuner(taker_, tuner_));

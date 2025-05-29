@@ -17,6 +17,8 @@ contract FlexPoolCancun is FlexPool {
         FlexPool(asset_, name_, symbol_, decimalsOffset_, controller_)
     {}
 
+    // ---
+
     function _getGuard() internal view override returns (bool) {
         return TransientSlot.tload(TransientSlot.asBoolean(GUARD_SLOT));
     }

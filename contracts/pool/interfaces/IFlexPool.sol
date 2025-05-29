@@ -15,6 +15,7 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IAssetRescuer, I
     // Event
 
     event Take(address indexed taker, uint256 assets, uint256 protocolAssets, int256 rebalanceAssets);
+    event RebalanceDonation(address indexed donor, uint256 assets);
     event TunerUpdate(address indexed taker, address indexed oldTuner, address indexed newTuner);
 
     // Error
@@ -54,6 +55,8 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IAssetRescuer, I
     function withdrawAvailable(uint256 assets, address receiver, address owner) external returns (uint256);
 
     function redeemAvailable(uint256 shares, address receiver, address owner) external returns (uint256);
+
+    function donateRebalance(uint256 assets) external;
 
     function setTuner(address taker, address tuner) external; // Only controller
 }

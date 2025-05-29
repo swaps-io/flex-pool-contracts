@@ -11,7 +11,9 @@
     "l": "yarn lint"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "5.3.0"
+    "@1inch/cross-chain-swap": "./submodules/1inch/cross-chain-swap",
+    "@openzeppelin/contracts": "5.3.0",
+    "solidity-utils": "./submodules/1inch/cross-chain-swap/lib/solidity-utils"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "0.15.11",
@@ -33,5 +35,21 @@
     "ts-node": "10.9.2",
     "typescript": "5.8.3",
     "viem": "2.30.5"
+  },
+  "resolutions": {
+    "solidity-utils/@metamask/eth-sig-util": "./submodules/empty",
+    "solidity-utils/@nomicfoundation/hardhat-ethers": "./submodules/empty",
+    "solidity-utils/@nomicfoundation/hardhat-network-helpers": "./submodules/empty",
+    "solidity-utils/@nomicfoundation/hardhat-verify": "./submodules/empty",
+    "solidity-utils/@openzeppelin/contracts": "./submodules/empty",
+    "solidity-utils/@uniswap/permit2-sdk": "./submodules/empty",
+    "solidity-utils/chai": "./submodules/empty",
+    "solidity-utils/dotenv": "./submodules/empty",
+    "solidity-utils/ethereumjs-util": "./submodules/empty",
+    "solidity-utils/ethers": "./submodules/empty",
+    "solidity-utils/hardhat": "./submodules/empty",
+    "solidity-utils/hardhat-deploy": "./submodules/empty",
+    "solidity-utils/mocha-chai-jest-snapshot": "./submodules/empty",
+    "solidity-utils/node-fetch": "./submodules/empty"
   }
 }

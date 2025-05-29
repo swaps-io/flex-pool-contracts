@@ -12,6 +12,51 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@1inch/limit-order-protocol@file:./submodules/1inch/cross-chain-swap/lib/limit-order-protocol::locator=flex-pool-contracts%40workspace%3A.":
+  version: 4.1.0
+  resolution: "@1inch/limit-order-protocol@file:./submodules/1inch/cross-chain-swap/lib/limit-order-protocol#./submodules/1inch/cross-chain-swap/lib/limit-order-protocol::hash=4b8546&locator=flex-pool-contracts%40workspace%3A."
+  dependencies:
+    "@1inch/solidity-utils": "npm:4.2.1"
+    "@chainlink/contracts": "npm:0.8.0"
+    "@gnosis.pm/safe-contracts": "npm:1.3.0"
+    "@openzeppelin/contracts": "npm:5.0.1"
+  checksum: 10c0/2e33442669674d724c8072a4e490cd9095e5f0f473d4a9d673ccdb1cde3bf49da0274941de8b37aeba7d6641bdf8034774d95849c4e44c2804b1c3b96572a705
+  languageName: node
+  linkType: hard
+
+"@1inch/solidity-utils@file:./submodules/1inch/cross-chain-swap/lib/solidity-utils::locator=flex-pool-contracts%40workspace%3A.":
+  version: 5.1.0
+  resolution: "@1inch/solidity-utils@file:./submodules/1inch/cross-chain-swap/lib/solidity-utils#./submodules/1inch/cross-chain-swap/lib/solidity-utils::hash=d13a8d&locator=flex-pool-contracts%40workspace%3A."
+  dependencies:
+    "@metamask/eth-sig-util": "npm:7.0.1"
+    "@nomicfoundation/hardhat-ethers": "npm:3.0.5"
+    "@nomicfoundation/hardhat-network-helpers": "npm:1.0.10"
+    "@nomicfoundation/hardhat-verify": "npm:2.0.5"
+    "@openzeppelin/contracts": "npm:5.0.2"
+    "@uniswap/permit2-sdk": "npm:1.2.0"
+    chai: "npm:4.4.0"
+    dotenv: "npm:16.4.5"
+    ethereumjs-util: "npm:7.1.5"
+    ethers: "npm:6.11.1"
+    hardhat: "npm:2.22.2"
+    hardhat-deploy: "npm:0.12.2"
+    mocha-chai-jest-snapshot: "npm:1.1.4"
+    node-fetch: "npm:2.7.0"
+  bin:
+    imports-list: utils/file-dependencies.js
+    solidity-utils-docify: utils/docify.utils.js
+    test-docgen: utils/test-docgen.js
+  checksum: 10c0/ef1f739aa0d7d8e6c0dd6ece927496d7306102c8ce5fd28d5fa8f75f477ff7627d2a5d1602d91a1345fbd74cc9729069f7d229b258fd84823def706ae242e6ec
+  languageName: node
+  linkType: hard
+
+"@1inch/solidity-utils@file:./submodules/empty::locator=flex-pool-contracts%40workspace%3A.":
+  version: 0.0.0
+  resolution: "@1inch/solidity-utils@file:./submodules/empty#./submodules/empty::hash=4b423f&locator=flex-pool-contracts%40workspace%3A."
+  checksum: 10c0/07c6aaaa4074846c43d04f2eb9cb7601e484c4ad3975c2430521f969bd4de5e50f3c69caa4e27c89219a2983aa42d7524833aa9fb8cc7725d6226e6075796209
+  languageName: node
+  linkType: hard
+
 "@adraffy/ens-normalize@npm:1.10.1":
   version: 1.10.1
   resolution: "@adraffy/ens-normalize@npm:1.10.1"
@@ -41,6 +86,13 @@ __metadata:
   version: 7.27.1
   resolution: "@babel/helper-validator-identifier@npm:7.27.1"
   checksum: 10c0/c558f11c4871d526498e49d07a84752d1800bf72ac0d3dad100309a2eaba24efbf56ea59af5137ff15e3a00280ebe588560534b0e894a4750f8b1411d8f78b84
+  languageName: node
+  linkType: hard
+
+"@chainlink/contracts@file:./submodules/empty::locator=flex-pool-contracts%40workspace%3A.":
+  version: 0.0.0
+  resolution: "@chainlink/contracts@file:./submodules/empty#./submodules/empty::hash=e07843&locator=flex-pool-contracts%40workspace%3A."
+  checksum: 10c0/e297dfef663fb30d4174a256c572faa20f9aa3f5fa387ceb6fa06570f66ba8d730edbdde83df398bd50900619c73fac9a8fb3e1b247550c71c341354abe27aff
   languageName: node
   linkType: hard
 
@@ -340,6 +392,13 @@ __metadata:
   version: 2.1.1
   resolution: "@fastify/busboy@npm:2.1.1"
   checksum: 10c0/6f8027a8cba7f8f7b736718b013f5a38c0476eea67034c94a0d3c375e2b114366ad4419e6a6fa7ffc2ef9c6d3e0435d76dd584a7a1cbac23962fda7650b579e3
+  languageName: node
+  linkType: hard
+
+"@gnosis.pm/safe-contracts@file:./submodules/empty::locator=flex-pool-contracts%40workspace%3A.":
+  version: 0.0.0
+  resolution: "@gnosis.pm/safe-contracts@file:./submodules/empty#./submodules/empty::hash=f52635&locator=flex-pool-contracts%40workspace%3A."
+  checksum: 10c0/e701cbc6acf25fb95dfebd5a623143b5a1b132b23cf0560796d69dd079866d9eb6757a4d0a08c5cdd3f0f211b2f886e6883de1f0f731438a7b91672c442678c1
   languageName: node
   linkType: hard
 
@@ -2630,6 +2689,8 @@ __metadata:
   resolution: "flex-pool-contracts@workspace:."
   dependencies:
     "@1inch/cross-chain-swap": ./submodules/1inch/cross-chain-swap
+    "@1inch/limit-order-protocol": ./submodules/1inch/cross-chain-swap/lib/limit-order-protocol
+    "@1inch/solidity-utils": ./submodules/1inch/cross-chain-swap/lib/solidity-utils
     "@nomicfoundation/hardhat-ignition": "npm:0.15.11"
     "@nomicfoundation/hardhat-ignition-viem": "npm:0.15.11"
     "@nomicfoundation/hardhat-network-helpers": "npm:1.0.12"

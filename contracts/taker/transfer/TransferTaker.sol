@@ -56,7 +56,9 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
         bytes calldata data_
     ) public payable override onlyPool {
         TransferTakeData calldata takeData;
-        assembly { takeData := add(data_.offset, 32) } // solhint-disable-line no-inline-assembly
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
+            takeData := add(data_.offset, 32)
+        }
 
         _verifyGiveAssets(giveAssets_, takeData.giveAssets);
         _verifyGiveEvent(takeData.giveAssets, takeData.takeReceiver, takeData.takeNonce, takeData.giveProof);

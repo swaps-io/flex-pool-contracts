@@ -20,13 +20,13 @@ contract TestTuner is ITuner {
         uint256 protocolAssets,
         int256 rebalanceAssets
     ) {
-        TestTuneData calldata testData = _decodeData(data_);
+        TestTuneData calldata testData;
+        assembly ("memory-safe") {
+            testData := data_.offset
+        }
+
         require(assets_ == testData.assets, InvalidAssets(assets_, testData.assets));
         protocolAssets = testData.protocolAssets;
         rebalanceAssets = testData.rebalanceAssets;
-    }
-
-    function _decodeData(bytes calldata data_) private pure returns (TestTuneData calldata testData) {
-        assembly { testData := data_.offset }
     }
 }

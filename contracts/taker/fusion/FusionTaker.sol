@@ -41,7 +41,9 @@ contract FusionTaker is IFusionTaker, PoolAware, VerifierAware, AssetRescuer, Co
         bytes calldata data_
     ) public payable override onlyPool {
         FusionTakeData calldata takeData;
-        assembly { takeData := add(data_.offset, 32) } // solhint-disable-line no-inline-assembly
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
+            takeData := add(data_.offset, 32)
+        }
 
         _verifyGiveEvent(takeData.srcImmutables, takeData.dstImmutablesComplement, takeData.srcEscrowCreatedProof);
         // TODO: implement

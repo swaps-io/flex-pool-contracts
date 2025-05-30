@@ -30,7 +30,11 @@ contract TestTaker is ITaker {
         uint256 giveAssets_,
         bytes calldata data_
     ) public payable override {
-        TestTakeData calldata testData = _decodeData(data_);
+        TestTakeData calldata testData;
+        assembly ("memory-safe") {
+            testData := data_.offset
+        }
+
         require(!taken[testData.id], AlreadyTaken(testData.id));
         taken[testData.id] = true;
         require(caller_ == testData.caller, InvalidCaller(caller_, testData.caller));
@@ -38,9 +42,5 @@ contract TestTaker is ITaker {
         require(rewardAssets_ == testData.rewardAssets, InvalidRewardAssets(rewardAssets_, testData.rewardAssets));
         require(giveAssets_ == testData.giveAssets, InvalidGiveAssets(giveAssets_, testData.giveAssets));
         require(msg.value == testData.value, InvalidValue(msg.value, testData.value));
-    }
-
-    function _decodeData(bytes calldata data_) private pure returns (TestTakeData calldata testData) {
-        assembly { testData := data_.offset }
     }
 }

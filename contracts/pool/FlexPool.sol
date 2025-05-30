@@ -14,7 +14,7 @@ import {AssetRescuer} from "../rescue/AssetRescuer.sol";
 
 import {Controllable} from "../control/Controllable.sol";
 
-import {Guard} from "../guard/Guard.sol";
+import {Guard} from "../util/guard/Guard.sol";
 
 import {ITuner} from "../tuner/interfaces/ITuner.sol";
 

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.26;
 
-import {IBaseEscrow} from "@1inch/cross-chain-swap/contracts/interfaces/IBaseEscrow.sol";
+import {IOrderMixin, TakerTraits, MakerTraits} from "@1inch/limit-order-protocol/contracts/interfaces/IOrderMixin.sol";
 import {IEscrowSrc} from "@1inch/cross-chain-swap/contracts/interfaces/IEscrowSrc.sol";
 
 import {IPoolAware} from "../../../pool/aware/interfaces/IPoolAware.sol";
@@ -14,12 +14,61 @@ import {IAssetRescuer} from "../../../rescue/interfaces/IAssetRescuer.sol";
 import {IControllable} from "../../../control/interfaces/IControllable.sol";
 
 interface IFusionGiver is IPoolAware, IAssetPermitter, IAssetRescuer, IControllable {
-    error NotFillOrderCall(bytes4 selector);
-    error GiverAssetsAffected(uint256 assets, uint256 assetsBefore);
+    error NoPostInteractionCall(MakerTraits makerTraits);
+    error PostInteractionListenerNotEscrowFactory(address listener, address escrowFactory);
+    error CallerNotOriginalTaker(address caller, address escrow, address originalTaker);
 
-    function router() external view returns (address);
+    function aggregationRouter() external view returns (address);
 
-    function fill(uint256 assets, bytes calldata fillData) external payable;
+    function escrowFactory() external view returns (address);
 
-    function withdraw(IEscrowSrc escrow, bytes32 secret, IBaseEscrow.Immutables calldata immutables) external;
+    function originalTaker(address escrow) external view returns (address);
+
+    function transferAssetToPool() external;
+
+    // `IOrderMixin` compatibility
+
+    function fillOrder(
+        IOrderMixin.Order calldata order,
+        bytes32 r,
+        bytes32 vs,
+        uint256 amount,
+        TakerTraits takerTraits
+    ) external payable returns (uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+
+    function fillOrderArgs(
+        IOrderMixin.Order calldata order,
+        bytes32 r,
+        bytes32 vs,
+        uint256 amount,
+        TakerTraits takerTraits,
+        bytes calldata args
+    ) external payable returns (uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+
+    function fillContractOrder(
+        IOrderMixin.Order calldata order,
+        bytes calldata signature,
+        uint256 amount,
+        TakerTraits takerTraits
+    ) external returns (uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+
+    function fillContractOrderArgs(
+        IOrderMixin.Order calldata order,
+        bytes calldata signature,
+        uint256 amount,
+        TakerTraits takerTraits,
+        bytes calldata args
+    ) external returns (uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+
+    // `IEscrowSrc` compatibility
+
+    function withdraw(bytes32 secret, IEscrowSrc.Immutables calldata immutables) external;
+
+    function publicWithdraw(bytes32 secret, IEscrowSrc.Immutables calldata immutables) external;
+
+    function cancel(IEscrowSrc.Immutables calldata immutables) external;
+    
+    function publicCancel(IEscrowSrc.Immutables calldata immutables) external;
+
+    function rescueFunds(address token, uint256 amount, IEscrowSrc.Immutables calldata immutables) external;
 }

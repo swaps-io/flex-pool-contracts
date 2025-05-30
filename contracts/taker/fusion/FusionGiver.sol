@@ -58,9 +58,9 @@ contract FusionGiver is IFusionGiver, PoolAware, AssetPermitter, AssetRescuer, C
         _trackTokenAfter(poolAsset, 0);
     }
 
-    modifier onlyOriginalTaker(IEscrowSrc.Immutables calldata immutables_) {
-        address escrow = address(_predictEscrow(immutables_));
-        require(msg.sender == originalTaker[escrow], CallerNotOriginalTaker(msg.sender, escrow, originalTaker[escrow]));
+    modifier onlyOriginalTaker(address escrow_) {
+        address taker = originalTaker[escrow_];
+        require(msg.sender == taker, CallerNotOriginalTaker(msg.sender, escrow_, taker));
         _;
     }
 
@@ -112,39 +112,74 @@ contract FusionGiver is IFusionGiver, PoolAware, AssetPermitter, AssetRescuer, C
 
     // `IEscrowSrc` compatibility
 
-    function withdraw(bytes32 secret_, IEscrowSrc.Immutables calldata immutables_) public override
+    function withdraw(bytes32 secret_, IEscrowSrc.Immutables calldata immutables_) public override {
+        withdrawEscrow(_predictEscrow(immutables_), secret_, immutables_);
+    }
+
+    function publicWithdraw(bytes32 secret_, IEscrowSrc.Immutables calldata immutables_) public override {
+        publicWithdrawEscrow(_predictEscrow(immutables_), secret_, immutables_);
+    }
+
+    function cancel(IEscrowSrc.Immutables calldata immutables_) public override {
+        cancelEscrow(_predictEscrow(immutables_), immutables_);
+    }
+    
+    function publicCancel(IEscrowSrc.Immutables calldata immutables_) public override {
+        publicCancelEscrow(_predictEscrow(immutables_), immutables_);
+    }
+
+    function rescueFunds(address token_, uint256 amount_, IEscrowSrc.Immutables calldata immutables_) public override {
+        rescueFundsEscrow(_predictEscrow(immutables_), token_, amount_, immutables_);
+    }
+
+    // `IEscrowSrc` using pre-calculated address
+
+    function withdrawEscrow(
+        address escrow_,
+        bytes32 secret_,
+        IEscrowSrc.Immutables calldata immutables_
+    ) public override
         trackNative
         returnPoolAsset
     {
-        _predictEscrow(immutables_).withdraw(secret_, immutables_);
+        IEscrowSrc(escrow_).withdraw(secret_, immutables_);
     }
 
-    function publicWithdraw(bytes32 secret_, IEscrowSrc.Immutables calldata immutables_) public override
+    function publicWithdrawEscrow(
+        address escrow_,
+        bytes32 secret_,
+        IEscrowSrc.Immutables calldata immutables_
+    ) public override
         trackNative
         returnPoolAsset
     {
-        _predictEscrow(immutables_).publicWithdraw(secret_, immutables_);
+        IEscrowSrc(escrow_).publicWithdraw(secret_, immutables_);
     }
 
-    function cancel(IEscrowSrc.Immutables calldata immutables_) public override
-        onlyOriginalTaker(immutables_)
+    function cancelEscrow(address escrow_, IEscrowSrc.Immutables calldata immutables_) public override
+        onlyOriginalTaker(escrow_)
         trackNative
         trackToken(poolAsset)
     {
-        _predictEscrow(immutables_).cancel(immutables_);
+        IEscrowSrc(escrow_).cancel(immutables_);
     }
     
-    function publicCancel(IEscrowSrc.Immutables calldata immutables_) public override
+    function publicCancelEscrow(address escrow_, IEscrowSrc.Immutables calldata immutables_) public override
         trackNative
     {
-        _predictEscrow(immutables_).publicCancel(immutables_);
+        IEscrowSrc(escrow_).publicCancel(immutables_);
     }
 
-    function rescueFunds(address token_, uint256 amount_, IEscrowSrc.Immutables calldata immutables_) public override
-        onlyOriginalTaker(immutables_)
+    function rescueFundsEscrow(
+        address escrow_,
+        address token_,
+        uint256 amount_,
+        IEscrowSrc.Immutables calldata immutables_
+    ) public override
+        onlyOriginalTaker(escrow_)
         trackAsset(token_)
     {
-        _predictEscrow(immutables_).rescueFunds(token_, amount_, immutables_);
+        IEscrowSrc(escrow_).rescueFunds(token_, amount_, immutables_);
     }
 
     // ---
@@ -177,12 +212,12 @@ contract FusionGiver is IFusionGiver, PoolAware, AssetPermitter, AssetRescuer, C
         (makingAmount, takingAmount, orderHash) = abi.decode(result, (uint256, uint256, bytes32));
 
         IEscrowSrc.Immutables memory immutables = _extractEscrowSrcImmutables(order_, orderHash, makingAmount, data);
-        address escrow = address(_predictEscrow(immutables));
+        address escrow = _predictEscrow(immutables);
         originalTaker[escrow] = msg.sender;
     }
 
-    function _predictEscrow(IEscrowSrc.Immutables memory immutables) private view returns (IEscrowSrc) {
-        return IEscrowSrc(IEscrowFactory(escrowFactory).addressOfEscrowSrc(immutables));
+    function _predictEscrow(IEscrowSrc.Immutables memory immutables) private view returns (address) {
+        return IEscrowFactory(escrowFactory).addressOfEscrowSrc(immutables);
     }
 
     function _emptyExtension() private pure returns (bytes calldata extension) {

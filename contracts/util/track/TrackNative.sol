@@ -11,6 +11,12 @@ abstract contract TrackNative {
         _trackNativeAfter(amountBefore);
     }
 
+    modifier trackNativeTo(address receiver_) {
+        uint256 amountBefore = _trackNativeBefore();
+        _;
+        _trackNativeAfter(amountBefore, receiver_);
+    }
+
     function _trackNativeBefore() internal view returns (uint256 amountBefore) {
         return address(this).balance - msg.value;
     }

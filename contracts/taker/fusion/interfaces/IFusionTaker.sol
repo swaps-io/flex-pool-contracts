@@ -13,6 +13,7 @@ interface IFusionTaker is ITaker, IFusionBase, IVerifierAware {
     error DstImmutablesComplementChainMismatch(uint256 complementChainId, uint256 blockChainId);
     error DstImmutablesComplementAssetNotPool(address complementToken, address poolAsset);
     error InsufficientSrcImmutablesAssets(uint256 assets, uint256 minAssets);
+    error ExcessiveDstImmutablesComplementAssets(uint256 assets, uint256 maxAssets);
 
     function giveChain() external view returns (uint256);
 

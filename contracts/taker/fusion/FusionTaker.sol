@@ -48,18 +48,22 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
 
     function take(
         address caller_,
-        uint256 /* assets_ */,
-        uint256 /* rewardAssets_ */,
+        uint256 assets_,
+        uint256 rewardAssets_,
         uint256 giveAssets_,
         bytes calldata data_
-    ) public payable override onlyPool {
+    ) public payable override
+        onlyPool
+        trackNativeTo(caller_)
+        trackTokenBudgetTo(poolAsset, assets_ + rewardAssets_, caller_)
+    {
         FusionTakeData calldata takeData;
         assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
             takeData := add(data_.offset, 32)
         }
 
         _verifySrcImmutables(takeData.srcImmutables, giveAssets_);
-        _verifyDstImmutablesComplement(takeData.dstImmutablesComplement);
+        _verifyDstImmutablesComplement(takeData.dstImmutablesComplement, assets_ + rewardAssets_);
         _verifyGiveEvent(takeData.srcImmutables, takeData.dstImmutablesComplement, takeData.srcEscrowCreatedProof);
 
         IBaseEscrow.Immutables memory immutables = _composeDstImmutables(
@@ -68,8 +72,6 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
         );
         IEscrowFactory(escrowFactory).createDstEscrow{value: msg.value}(immutables, takeData.srcCancellationTimestamp);
         _saveOriginalTaker(immutables, caller_);
-
-        _trackTokenAfter(poolAsset, 0, caller_);
     }
 
     // `IEscrowDst` compatibility
@@ -132,7 +134,8 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
     }
 
     function _verifyDstImmutablesComplement(
-        IEscrowFactory.DstImmutablesComplement calldata dstImmutablesComplement_
+        IEscrowFactory.DstImmutablesComplement calldata dstImmutablesComplement_,
+        uint256 takeAssets_
     ) private view {
         require(
             dstImmutablesComplement_.chainId == block.chainid,
@@ -141,6 +144,10 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
         require(
             AddressLib.get(dstImmutablesComplement_.token) == address(poolAsset),
             DstImmutablesComplementAssetNotPool(AddressLib.get(dstImmutablesComplement_.token), address(poolAsset))
+        );
+        require(
+            dstImmutablesComplement_.amount <= takeAssets_,
+            ExcessiveDstImmutablesComplementAssets(dstImmutablesComplement_.amount, takeAssets_)
         );
     }
 

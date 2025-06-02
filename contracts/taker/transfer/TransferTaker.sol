@@ -14,13 +14,14 @@ import {AssetRescuer} from "../../rescue/AssetRescuer.sol";
 import {Controllable} from "../../control/Controllable.sol";
 
 import {DecimalsLib} from "../../util/libraries/DecimalsLib.sol";
+import {TrackNative} from "../../util/track/TrackNative.sol";
 
 import {ITransferTaker} from "./interfaces/ITransferTaker.sol";
 import {ITransferGiver} from "./interfaces/ITransferGiver.sol";
 
 import {TransferTakeData} from "./structs/TransferTakeData.sol";
 
-contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer, Controllable {
+contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer, Controllable, TrackNative {
     uint256 public immutable override giveChain;
     address public immutable override giveTransferGiver;
     int256 public immutable override giveDecimalsShift;
@@ -54,18 +55,20 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
         uint256 rewardAssets_,
         uint256 giveAssets_,
         bytes calldata data_
-    ) public payable override onlyPool {
+    ) public payable override
+        onlyPool
+        trackNativeTo(caller_)
+    {
         TransferTakeData calldata takeData;
         assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
             takeData := add(data_.offset, 32)
         }
 
-        _verifyCaller(caller_, takeData.takeReceiver);
         _verifyGiveAssets(giveAssets_, takeData.giveAssets);
-        _verifyGiveEvent(takeData.giveAssets, takeData.takeReceiver, takeData.takeNonce, takeData.giveProof);
-        _transitToTaken(takeData.takeReceiver, takeData.takeNonce);
+        _verifyGiveEvent(takeData.giveAssets, caller_, takeData.takeNonce, takeData.giveProof);
+        _transitToTaken(caller_, takeData.takeNonce);
 
-        SafeERC20.safeTransfer(poolAsset, takeData.takeReceiver, assets_ + rewardAssets_);
+        SafeERC20.safeTransfer(poolAsset, caller_, assets_ + rewardAssets_);
     }
 
     // ---
@@ -79,10 +82,6 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
     }
 
     // ---
-
-    function _verifyCaller(address caller_, address receiver_) private pure {
-        require(caller_ == receiver_, CallerNotReceiver(caller_, receiver_));
-    }
 
     function _verifyGiveAssets(uint256 assets_, uint256 giveAssets_) private view {
         (uint256 commonAssets, uint256 commonGiveAssets) = DecimalsLib.common(assets_, giveAssets_, giveDecimalsShift);

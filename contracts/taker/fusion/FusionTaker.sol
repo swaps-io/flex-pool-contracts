@@ -2,27 +2,21 @@
 
 pragma solidity ^0.8.26;
 
-import {TimelocksLib} from "@1inch/cross-chain-swap/contracts/libraries/TimelocksLib.sol";
+import {IEscrowDst} from "@1inch/cross-chain-swap/contracts/interfaces/IEscrowDst.sol";
 
-import {AddressLib} from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
-
-import {PoolAware, IFlexPool} from "../../pool/aware/PoolAware.sol";
+import {AddressLib, Address} from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
 import {VerifierAware, IEventVerifier} from "../../verifier/aware/VerifierAware.sol";
 
-import {AssetRescuer} from "../../rescue/AssetRescuer.sol";
-
-import {Controllable} from "../../control/Controllable.sol";
-
 import {DecimalsLib} from "../../util/libraries/DecimalsLib.sol";
-import {TrackToken} from "../../util/track/TrackToken.sol";
 
 import {IFusionTaker} from "./interfaces/IFusionTaker.sol";
 
 import {FusionTakeData, IEscrowFactory, IBaseEscrow} from "./structs/FusionTakeData.sol";
 
-contract FusionTaker is IFusionTaker, PoolAware, VerifierAware, AssetRescuer, Controllable, TrackToken {
-    address public immutable override escrowFactory;
+import {FusionBase, IFlexPool} from "./FusionBase.sol";
+
+contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
     uint256 public immutable override giveChain;
     address public immutable override giveEscrowFactory;
     address public immutable override giveFusionGiver;
@@ -30,19 +24,17 @@ contract FusionTaker is IFusionTaker, PoolAware, VerifierAware, AssetRescuer, Co
 
     constructor(
         IFlexPool pool_,
-        IEventVerifier verifier_,
         address controller_,
         address escrowFactory_,
+        IEventVerifier verifier_,
         uint256 giveChain_,
         address giveEscrowFactory_,
         address giveFusionGiver_,
         int256 giveDecimalsShift_
     )
-        PoolAware(pool_)
+        FusionBase(pool_, controller_, escrowFactory_)
         VerifierAware(verifier_)
-        Controllable(controller_)
     {
-        escrowFactory = escrowFactory_;
         giveChain = giveChain_;
         giveEscrowFactory = giveEscrowFactory_;
         giveFusionGiver = giveFusionGiver_;
@@ -70,22 +62,51 @@ contract FusionTaker is IFusionTaker, PoolAware, VerifierAware, AssetRescuer, Co
         _verifyDstImmutablesComplement(takeData.dstImmutablesComplement);
         _verifyGiveEvent(takeData.srcImmutables, takeData.dstImmutablesComplement, takeData.srcEscrowCreatedProof);
 
-        IEscrowFactory(escrowFactory).createDstEscrow{value: msg.value}(
-            _composeDstImmutables(takeData.srcImmutables, takeData.dstImmutablesComplement),
-            takeData.srcCancellationTimestamp
+        IBaseEscrow.Immutables memory immutables = _composeDstImmutables(
+            takeData.srcImmutables,
+            takeData.dstImmutablesComplement
         );
+        IEscrowFactory(escrowFactory).createDstEscrow{value: msg.value}(immutables, takeData.srcCancellationTimestamp);
+        _saveOriginalTaker(immutables, caller_);
 
         _trackTokenAfter(poolAsset, 0, caller_);
     }
 
-    // ---
+    // `IEscrowDst` compatibility
 
-    function _canCallRescue(address caller_) internal view override returns (bool) {
-        return caller_ == controller;
+    function withdraw(bytes32 secret_, IBaseEscrow.Immutables calldata immutables_) public override {
+        withdrawEscrow(_predictEscrow(immutables_), secret_, immutables_);
     }
 
-    function _canRescueAsset(address /* asset_ */) internal pure override returns (bool) {
-        return true; // Not designed to hold asset after transaction
+    function cancel(IBaseEscrow.Immutables calldata immutables_) public override {
+        cancelEscrow(_predictEscrow(immutables_), immutables_);
+    }
+
+    // `IEscrowDst` using pre-calculated address
+
+    function withdrawEscrow(
+        address escrow_,
+        bytes32 secret_,
+        IBaseEscrow.Immutables calldata immutables_
+    ) public override
+        onlyOriginalTaker(escrow_)
+        trackNative
+        trackToken(poolAsset)
+    {
+        IEscrowDst(escrow_).withdraw(secret_, immutables_);
+    }
+
+    function cancelEscrow(address escrow_, IBaseEscrow.Immutables calldata immutables_) public override
+        trackNative
+        returnPoolAsset
+    {
+        IEscrowDst(escrow_).cancel(immutables_);
+    }
+
+    // ---
+
+    function _predictEscrow(IBaseEscrow.Immutables memory immutables_) internal view override returns (address) {
+        return IEscrowFactory(escrowFactory).addressOfEscrowDst(immutables_);
     }
 
     // ---
@@ -137,14 +158,14 @@ contract FusionTaker is IFusionTaker, PoolAware, VerifierAware, AssetRescuer, Co
     function _composeDstImmutables(
         IBaseEscrow.Immutables calldata srcImmutables_,
         IEscrowFactory.DstImmutablesComplement calldata dstImmutablesComplement_
-    ) private pure returns (IBaseEscrow.Immutables memory immutables) {
+    ) private view returns (IBaseEscrow.Immutables memory immutables) {
         immutables.orderHash = srcImmutables_.orderHash;
         immutables.hashlock = srcImmutables_.hashlock;
         immutables.maker = dstImmutablesComplement_.maker;
-        immutables.taker = srcImmutables_.taker;
+        immutables.taker = Address.wrap(uint160(address(this)));
         immutables.token = dstImmutablesComplement_.token;
         immutables.amount = dstImmutablesComplement_.amount;
         immutables.safetyDeposit = dstImmutablesComplement_.safetyDeposit;
-        immutables.timelocks = TimelocksLib.setDeployedAt(srcImmutables_.timelocks, 0);
+        immutables.timelocks = srcImmutables_.timelocks; // Updated w/ `setDeployedAt` by factory
     }
 }

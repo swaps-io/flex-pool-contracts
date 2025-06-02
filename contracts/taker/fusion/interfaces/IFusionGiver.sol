@@ -3,29 +3,19 @@
 pragma solidity ^0.8.26;
 
 import {IOrderMixin, TakerTraits, MakerTraits} from "@1inch/limit-order-protocol/contracts/interfaces/IOrderMixin.sol";
-import {IEscrowSrc} from "@1inch/cross-chain-swap/contracts/interfaces/IEscrowSrc.sol";
 
-import {IPoolAware} from "../../../pool/aware/interfaces/IPoolAware.sol";
+import {IBaseEscrow} from "@1inch/cross-chain-swap/contracts/interfaces/IBaseEscrow.sol";
 
 import {IAssetPermitter} from "../../../permit/interfaces/IAssetPermitter.sol";
 
-import {IAssetRescuer} from "../../../rescue/interfaces/IAssetRescuer.sol";
+import {IFusionBase} from "./IFusionBase.sol";
 
-import {IControllable} from "../../../control/interfaces/IControllable.sol";
-
-interface IFusionGiver is IPoolAware, IAssetPermitter, IAssetRescuer, IControllable {
+interface IFusionGiver is IFusionBase, IAssetPermitter {
     error NoPostInteractionCall(MakerTraits makerTraits);
     error PostInteractionListenerNotEscrowFactory(address listener, address escrowFactory);
     error EscrowMakerAssetNotPool(address asset, address poolAsset);
-    error CallerNotOriginalTaker(address caller, address escrow, address originalTaker);
 
     function aggregationRouter() external view returns (address);
-
-    function escrowFactory() external view returns (address);
-
-    function originalTaker(address escrow) external view returns (address);
-
-    function transferAssetToPool() external;
 
     // `IOrderMixin` compatibility
 
@@ -63,22 +53,13 @@ interface IFusionGiver is IPoolAware, IAssetPermitter, IAssetRescuer, IControlla
 
     // `IEscrowSrc` compatibility
 
-    function withdraw(bytes32 secret, IEscrowSrc.Immutables calldata immutables) external;
+    function withdraw(bytes32 secret, IBaseEscrow.Immutables calldata immutables) external;
 
-    function cancel(IEscrowSrc.Immutables calldata immutables) external;
-
-    function rescueFunds(address token, uint256 amount, IEscrowSrc.Immutables calldata immutables) external;
+    function cancel(IBaseEscrow.Immutables calldata immutables) external;
 
     // `IEscrowSrc` using pre-calculated address
 
-    function withdrawEscrow(address escrow, bytes32 secret, IEscrowSrc.Immutables calldata immutables) external;
+    function withdrawEscrow(address escrow, bytes32 secret, IBaseEscrow.Immutables calldata immutables) external;
 
-    function cancelEscrow(address escrow, IEscrowSrc.Immutables calldata immutables) external;
-
-    function rescueFundsEscrow(
-        address escrow,
-        address token,
-        uint256 amount,
-        IEscrowSrc.Immutables calldata immutables
-    ) external;
+    function cancelEscrow(address escrow, IBaseEscrow.Immutables calldata immutables) external;
 }

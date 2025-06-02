@@ -2,7 +2,6 @@ import type { HardhatUserConfig } from 'hardhat/config';
 import { SolcUserConfig } from 'hardhat/types';
 import '@nomicfoundation/hardhat-toolbox-viem';
 import 'hardhat-contract-sizer';
-import 'hardhat-preprocessor';
 
 type SolcOverrides = {
   evmVersion?: string;
@@ -21,25 +20,6 @@ const solc = (overrides: SolcOverrides = {}): SolcUserConfig => {
     },
   };
 };
-
-const remap = (line: string, search: string, replace: string, path: string): string => {
-  if (!line.includes(search)) {
-    return line;
-  }
-
-  const before = line;
-  line = line.replace(search, replace);
-
-  const dpos = path.indexOf(__dirname);
-  const file = dpos < 0 ? path : path.slice(dpos + __dirname.length);
-
-  console.log(`Remap '${search}' -> '${replace}' in '${file}':`);
-  console.log(`- ${before}`);
-  console.log(`+ ${line}`);
-  console.log();
-
-  return line;
-}
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -63,16 +43,6 @@ const config: HardhatUserConfig = {
       'contracts/taker/fusion/FusionGiver.sol',
       'contracts/taker/fusion/FusionTaker.sol',
     ],
-  },
-  preprocess: {
-    eachLine: () => ({
-      transform: (line: string, source) => {
-        if (line.includes('import')) {
-          return remap(line, '"solidity-utils', '"@1inch/solidity-utils', source.absolutePath);
-        }
-        return line;
-      },
-    }),
   },
 };
 

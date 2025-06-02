@@ -1015,13 +1015,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@solidity-parser/parser@npm:^0.19.0":
-  version: 0.19.0
-  resolution: "@solidity-parser/parser@npm:0.19.0"
-  checksum: 10c0/2f4c885bb32ca95ea41120f0d972437b4191d26aa63ea62b7904d075e1b90f4290996407ef84a46a20f66e4268f41fb07fc0edc7142afc443511e8c74b37c6e9
-  languageName: node
-  linkType: hard
-
 "@solidity-parser/parser@npm:^0.20.0, @solidity-parser/parser@npm:^0.20.1":
   version: 0.20.1
   resolution: "@solidity-parser/parser@npm:0.20.1"
@@ -1146,11 +1139,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:*":
-  version: 22.15.27
-  resolution: "@types/node@npm:22.15.27"
+  version: 22.15.29
+  resolution: "@types/node@npm:22.15.29"
   dependencies:
     undici-types: "npm:~6.21.0"
-  checksum: 10c0/1057dfabd9dc1a9c0de35b057341f0b22e4b54082d432cca6c30209e16bd67668cdb41a794ea753deaaf15f6d6fdc1e1cb2551afe21a78952e0b82386697b133
+  checksum: 10c0/602cc88c6150780cd9b5b44604754e0ce13983ae876a538861d6ecfb1511dff289e5576fffd26c841cde2142418d4bb76e2a72a382b81c04557ccb17cff29e1d
   languageName: node
   linkType: hard
 
@@ -2199,13 +2192,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"encode-utf8@npm:^1.0.2":
-  version: 1.0.3
-  resolution: "encode-utf8@npm:1.0.3"
-  checksum: 10c0/6b3458b73e868113d31099d7508514a5c627d8e16d1e0542d1b4e3652299b8f1f590c468e2b9dcdf1b4021ee961f31839d0be9d70a7f2a8a043c63b63c9b3a88
-  languageName: node
-  linkType: hard
-
 "encoding@npm:^0.1.13":
   version: 0.1.13
   resolution: "encoding@npm:0.1.13"
@@ -2594,8 +2580,7 @@ __metadata:
     chai: "npm:4.5.0"
     hardhat: "npm:2.24.1"
     hardhat-contract-sizer: "npm:2.10.0"
-    hardhat-gas-reporter: "npm:2.2.3"
-    hardhat-preprocessor: "npm:^0.1.5"
+    hardhat-gas-reporter: "npm:2.3.0"
     solhint: "npm:5.1.0"
     solidity-coverage: "npm:0.8.16"
     ts-node: "npm:10.9.2"
@@ -2603,15 +2588,6 @@ __metadata:
     viem: "npm:2.30.5"
   languageName: unknown
   linkType: soft
-
-"fmix@npm:^0.1.0":
-  version: 0.1.0
-  resolution: "fmix@npm:0.1.0"
-  dependencies:
-    imul: "npm:^1.0.0"
-  checksum: 10c0/af9e54eacc00b46e1c4a77229840e37252fff7634f81026591da9d24438ca15a1afa2786f579eb7865489ded21b76af7327d111b90b944e7409cd60f4d4f2ded
-  languageName: node
-  linkType: hard
 
 "follow-redirects@npm:^1.12.1, follow-redirects@npm:^1.15.6":
   version: 1.15.9
@@ -2974,14 +2950,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"hardhat-gas-reporter@npm:2.2.3":
-  version: 2.2.3
-  resolution: "hardhat-gas-reporter@npm:2.2.3"
+"hardhat-gas-reporter@npm:2.3.0":
+  version: 2.3.0
+  resolution: "hardhat-gas-reporter@npm:2.3.0"
   dependencies:
     "@ethersproject/abi": "npm:^5.7.0"
     "@ethersproject/bytes": "npm:^5.7.0"
     "@ethersproject/units": "npm:^5.7.0"
-    "@solidity-parser/parser": "npm:^0.19.0"
+    "@solidity-parser/parser": "npm:^0.20.1"
     axios: "npm:^1.6.7"
     brotli-wasm: "npm:^2.0.1"
     chalk: "npm:4.1.2"
@@ -2995,18 +2971,7 @@ __metadata:
     viem: "npm:^2.27.0"
   peerDependencies:
     hardhat: ^2.16.0
-  checksum: 10c0/4011d4e9a01e60777d0f25683b878d47b4bbe5613c39ce0f5a5cdef704a5b0e0d5bb19e7c63d8ab35603c5539541a099a1105583c7d067abf7e2a1e25d9b31da
-  languageName: node
-  linkType: hard
-
-"hardhat-preprocessor@npm:^0.1.5":
-  version: 0.1.5
-  resolution: "hardhat-preprocessor@npm:0.1.5"
-  dependencies:
-    murmur-128: "npm:^0.2.1"
-  peerDependencies:
-    hardhat: ^2.0.5
-  checksum: 10c0/bdc0990b3f95c7fc7ebc0cab5200e4934e5b2dc489574c521747329146e0a242b7109b875dedf61bf5cb3f1785a0a600139c4872529d36b83f48639a3f7eb2d1
+  checksum: 10c0/200ff3fb318de657e72e660526f41c692c4bb3a1b1a43414bd29c1737cf71d514258546bb7722abfad3c296a38e0c0d6e7239410beff4d26d6b529e0d6f94d62
   languageName: node
   linkType: hard
 
@@ -3269,13 +3234,6 @@ __metadata:
     parent-module: "npm:^1.0.0"
     resolve-from: "npm:^4.0.0"
   checksum: 10c0/bf8cc494872fef783249709385ae883b447e3eb09db0ebd15dcead7d9afe7224dad7bd7591c6b73b0b19b3c0f9640eb8ee884f01cfaf2887ab995b0b36a0cbec
-  languageName: node
-  linkType: hard
-
-"imul@npm:^1.0.0":
-  version: 1.0.1
-  resolution: "imul@npm:1.0.1"
-  checksum: 10c0/d564c45a5017f01f965509ef409fad8175749bc96a52a95e1a09f05378d135fb37051cea7194d0eeca5147541d8e80d68853f5f681eef05f9f14f1d551edae2f
   languageName: node
   linkType: hard
 
@@ -4042,17 +4000,6 @@ __metadata:
   version: 2.1.3
   resolution: "ms@npm:2.1.3"
   checksum: 10c0/d924b57e7312b3b63ad21fc5b3dc0af5e78d61a1fc7cfb5457edaf26326bf62be5307cc87ffb6862ef1c2b33b0233cdb5d4f01c4c958cc0d660948b65a287a48
-  languageName: node
-  linkType: hard
-
-"murmur-128@npm:^0.2.1":
-  version: 0.2.1
-  resolution: "murmur-128@npm:0.2.1"
-  dependencies:
-    encode-utf8: "npm:^1.0.2"
-    fmix: "npm:^0.1.0"
-    imul: "npm:^1.0.0"
-  checksum: 10c0/1ae871af53693a9159794b92ace63c1b5c1cc137d235cc954a56af00e48856625131605517e1ee00f60295d0223a13091b88d33a55686011774a63db3b94ecd5
   languageName: node
   linkType: hard
 

@@ -1,3 +1,4 @@
 [submodule "submodules/1inch/cross-chain-swap"]
 	path = submodules/1inch/cross-chain-swap
 	url = https://github.com/1inch/cross-chain-swap
+	ignore = dirty

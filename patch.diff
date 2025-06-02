@@ -1,0 +1,27 @@
+Submodule submodules/1inch/cross-chain-swap contains modified content
+diff --git a/submodules/1inch/cross-chain-swap/contracts/interfaces/IBaseEscrow.sol b/submodules/1inch/cross-chain-swap/contracts/interfaces/IBaseEscrow.sol
+index 21acc99..d6df725 100644
+--- a/submodules/1inch/cross-chain-swap/contracts/interfaces/IBaseEscrow.sol
++++ b/submodules/1inch/cross-chain-swap/contracts/interfaces/IBaseEscrow.sol
+@@ -2,7 +2,7 @@
+ 
+ pragma solidity ^0.8.0;
+ 
+-import { Address } from "solidity-utils/contracts/libraries/AddressLib.sol";
++import { Address } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
+ 
+ import { Timelocks } from "../libraries/TimelocksLib.sol";
+ 
+diff --git a/submodules/1inch/cross-chain-swap/contracts/interfaces/IEscrowFactory.sol b/submodules/1inch/cross-chain-swap/contracts/interfaces/IEscrowFactory.sol
+index 46f13d5..06a58af 100644
+--- a/submodules/1inch/cross-chain-swap/contracts/interfaces/IEscrowFactory.sol
++++ b/submodules/1inch/cross-chain-swap/contracts/interfaces/IEscrowFactory.sol
+@@ -2,7 +2,7 @@
+ 
+ pragma solidity ^0.8.0;
+ 
+-import { Address } from "solidity-utils/contracts/libraries/AddressLib.sol";
++import { Address } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
+ 
+ import { Timelocks } from "../libraries/TimelocksLib.sol";
+ 

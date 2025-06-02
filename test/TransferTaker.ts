@@ -15,7 +15,7 @@ import {
 
 const TRANSFER_TAKE_DATA_ABI = parseAbiParameters([
   'TransferTakeData',
-  'struct TransferTakeData { uint256 giveAssets; address takeReceiver; uint256 takeNonce; bytes giveProof; }',
+  'struct TransferTakeData { uint256 giveAssets; uint256 takeNonce; bytes giveProof; }',
 ]);
 const TEST_TUNE_DATA_ABI = parseAbiParameters([
   'TestTuneData',
@@ -253,11 +253,10 @@ describe('TransferTaker', function () {
     const protocolAssets = 10_000n;
     const rebalanceAssets = 20_000n;
     const poolInitAssets = takeAssets * 5n;
-    const takeReceiver = checksumAddress(anotherClient.account.address);
+    const takeReceiver = anotherClient.account.address;
     const giveProof = '0x0123456780abcdef';
     const takerData = encodeAbiParameters(TRANSFER_TAKE_DATA_ABI, [{
       giveAssets,
-      takeReceiver,
       takeNonce,
       giveProof,
     }]);
@@ -297,7 +296,7 @@ describe('TransferTaker', function () {
         takerData, // takerData
         tunerData, // tunerData
       ],
-    })).rejectedWith(`CallerNotReceiver("${checksumAddress(regularClient.account.address)}", "${takeReceiver}")`);
+    })).rejectedWith('InvalidEvent'); // Wrong "regular" client used instead of "another"
 
     await expect(anotherClient.writeContract({
       abi: takerPool.abi,
@@ -440,17 +439,15 @@ describe('TransferTaker', function () {
     const protocolAssets = 10_000n;
     const rebalanceAssets = 20_000n;
     const poolInitAssets = takeAssets * 5n;
-    const takeReceiver = checksumAddress(anotherClient.account.address);
+    const takeReceiver = anotherClient.account.address;
     const giveProof = '0x0123456780abcdef';
     const takerData = encodeAbiParameters(TRANSFER_TAKE_DATA_ABI, [{
       giveAssets,
-      takeReceiver,
       takeNonce,
       giveProof,
     }]);
     const takerData2 = encodeAbiParameters(TRANSFER_TAKE_DATA_ABI, [{
       giveAssets,
-      takeReceiver,
       takeNonce: takeNonce2,
       giveProof,
     }]);
@@ -520,7 +517,7 @@ describe('TransferTaker', function () {
         takerData, // takerData
         tunerData, // tunerData
       ],
-    })).rejectedWith(`CallerNotReceiver("${checksumAddress(regularClient.account.address)}", "${takeReceiver}")`);
+    })).rejectedWith('InvalidEvent'); // Wrong "regular" client used instead of "another"
 
     // First
     await anotherClient.writeContract({

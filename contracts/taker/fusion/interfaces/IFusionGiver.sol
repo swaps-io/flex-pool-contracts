@@ -64,11 +64,7 @@ interface IFusionGiver is IPoolAware, IAssetPermitter, IAssetRescuer, IControlla
 
     function withdraw(bytes32 secret, IEscrowSrc.Immutables calldata immutables) external;
 
-    function publicWithdraw(bytes32 secret, IEscrowSrc.Immutables calldata immutables) external;
-
     function cancel(IEscrowSrc.Immutables calldata immutables) external;
-    
-    function publicCancel(IEscrowSrc.Immutables calldata immutables) external;
 
     function rescueFunds(address token, uint256 amount, IEscrowSrc.Immutables calldata immutables) external;
 
@@ -76,11 +72,7 @@ interface IFusionGiver is IPoolAware, IAssetPermitter, IAssetRescuer, IControlla
 
     function withdrawEscrow(address escrow, bytes32 secret, IEscrowSrc.Immutables calldata immutables) external;
 
-    function publicWithdrawEscrow(address escrow, bytes32 secret, IEscrowSrc.Immutables calldata immutables) external;
-
     function cancelEscrow(address escrow, IEscrowSrc.Immutables calldata immutables) external;
-    
-    function publicCancelEscrow(address escrow, IEscrowSrc.Immutables calldata immutables) external;
 
     function rescueFundsEscrow(
         address escrow,

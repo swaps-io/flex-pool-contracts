@@ -116,16 +116,8 @@ contract FusionGiver is IFusionGiver, PoolAware, AssetPermitter, AssetRescuer, C
         withdrawEscrow(_predictEscrow(immutables_), secret_, immutables_);
     }
 
-    function publicWithdraw(bytes32 secret_, IEscrowSrc.Immutables calldata immutables_) public override {
-        publicWithdrawEscrow(_predictEscrow(immutables_), secret_, immutables_);
-    }
-
     function cancel(IEscrowSrc.Immutables calldata immutables_) public override {
         cancelEscrow(_predictEscrow(immutables_), immutables_);
-    }
-    
-    function publicCancel(IEscrowSrc.Immutables calldata immutables_) public override {
-        publicCancelEscrow(_predictEscrow(immutables_), immutables_);
     }
 
     function rescueFunds(address token_, uint256 amount_, IEscrowSrc.Immutables calldata immutables_) public override {
@@ -145,29 +137,12 @@ contract FusionGiver is IFusionGiver, PoolAware, AssetPermitter, AssetRescuer, C
         IEscrowSrc(escrow_).withdraw(secret_, immutables_);
     }
 
-    function publicWithdrawEscrow(
-        address escrow_,
-        bytes32 secret_,
-        IEscrowSrc.Immutables calldata immutables_
-    ) public override
-        trackNative
-        returnPoolAsset
-    {
-        IEscrowSrc(escrow_).publicWithdraw(secret_, immutables_);
-    }
-
     function cancelEscrow(address escrow_, IEscrowSrc.Immutables calldata immutables_) public override
         onlyOriginalTaker(escrow_)
         trackNative
         trackToken(poolAsset)
     {
         IEscrowSrc(escrow_).cancel(immutables_);
-    }
-    
-    function publicCancelEscrow(address escrow_, IEscrowSrc.Immutables calldata immutables_) public override
-        trackNative
-    {
-        IEscrowSrc(escrow_).publicCancel(immutables_);
     }
 
     function rescueFundsEscrow(

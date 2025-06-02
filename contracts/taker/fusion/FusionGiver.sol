@@ -187,6 +187,11 @@ contract FusionGiver is IFusionGiver, PoolAware, AssetPermitter, AssetRescuer, C
         (makingAmount, takingAmount, orderHash) = abi.decode(result, (uint256, uint256, bytes32));
 
         IEscrowSrc.Immutables memory immutables = _extractEscrowSrcImmutables(order_, orderHash, makingAmount, data);
+        require(
+            AddressLib.get(immutables.token) == address(poolAsset),
+            EscrowMakerAssetNotPool(AddressLib.get(immutables.token), address(poolAsset))
+        );
+
         address escrow = _predictEscrow(immutables);
         originalTaker[escrow] = msg.sender;
     }

@@ -16,6 +16,7 @@ import {IControllable} from "../../../control/interfaces/IControllable.sol";
 interface IFusionGiver is IPoolAware, IAssetPermitter, IAssetRescuer, IControllable {
     error NoPostInteractionCall(MakerTraits makerTraits);
     error PostInteractionListenerNotEscrowFactory(address listener, address escrowFactory);
+    error EscrowMakerAssetNotPool(address asset, address poolAsset);
     error CallerNotOriginalTaker(address caller, address escrow, address originalTaker);
 
     function aggregationRouter() external view returns (address);

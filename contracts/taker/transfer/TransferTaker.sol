@@ -49,7 +49,7 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
     }
 
     function take(
-        address /* caller_ */,
+        address caller_,
         uint256 assets_,
         uint256 rewardAssets_,
         uint256 giveAssets_,
@@ -60,6 +60,7 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
             takeData := add(data_.offset, 32)
         }
 
+        _verifyCaller(caller_, takeData.takeReceiver);
         _verifyGiveAssets(giveAssets_, takeData.giveAssets);
         _verifyGiveEvent(takeData.giveAssets, takeData.takeReceiver, takeData.takeNonce, takeData.giveProof);
         _transitToTaken(takeData.takeReceiver, takeData.takeNonce);
@@ -77,6 +78,10 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
     }
 
     // ---
+
+    function _verifyCaller(address caller_, address receiver_) private pure {
+        require(caller_ == receiver_, CallerNotReceiver(caller_, receiver_));
+    }
 
     function _verifyGiveAssets(uint256 assets_, uint256 giveAssets_) private view {
         (uint256 commonAssets, uint256 commonGiveAssets) = DecimalsLib.common(assets_, giveAssets_, giveDecimalsShift);

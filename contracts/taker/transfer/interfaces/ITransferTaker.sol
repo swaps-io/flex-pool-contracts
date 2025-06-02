@@ -13,6 +13,7 @@ import {IControllable} from "../../../control/interfaces/IControllable.sol";
 import {ITaker} from "../../interfaces/ITaker.sol";
 
 interface ITransferTaker is ITaker, IPoolAware, IVerifierAware, IAssetRescuer, IControllable {
+    error CallerNotReceiver(address caller, address receiver);
     error InsufficientGiveAssets(uint256 assets, uint256 minAssets);
     error AlreadyTaken(address receiver, uint256 nonce);
 

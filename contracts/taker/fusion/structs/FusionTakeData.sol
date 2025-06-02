@@ -7,5 +7,6 @@ import {IEscrowFactory, IBaseEscrow} from "@1inch/cross-chain-swap/contracts/int
 struct FusionTakeData {
     IBaseEscrow.Immutables srcImmutables;
     IEscrowFactory.DstImmutablesComplement dstImmutablesComplement;
+    uint256 srcCancellationTimestamp;
     bytes srcEscrowCreatedProof;
 }

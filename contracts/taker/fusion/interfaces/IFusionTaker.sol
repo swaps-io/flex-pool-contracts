@@ -13,7 +13,18 @@ import {IControllable} from "../../../control/interfaces/IControllable.sol";
 import {ITaker} from "../../interfaces/ITaker.sol";
 
 interface IFusionTaker is ITaker, IPoolAware, IVerifierAware, IAssetRescuer, IControllable {
-    function srcEscrowChain() external view returns (uint256);
+    error SrcImmutablesTakerNotFusionGiver(address immutablesTaker, address fusionGiver);
+    error DstImmutablesComplementChainMismatch(uint256 complementChainId, uint256 blockChainId);
+    error DstImmutablesComplementAssetNotPool(address complementToken, address poolAsset);
+    error InsufficientSrcImmutablesAssets(uint256 assets, uint256 minAssets);
 
-    function srcEscrowFactory() external view returns (address);
+    function escrowFactory() external view returns (address);
+
+    function giveChain() external view returns (uint256);
+
+    function giveEscrowFactory() external view returns (address);
+
+    function giveFusionGiver() external view returns (address);
+
+    function giveDecimalsShift() external view returns (int256);
 }

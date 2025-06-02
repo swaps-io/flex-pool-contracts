@@ -64,6 +64,7 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
         _verifyGiveAssets(giveAssets_, takeData.giveAssets);
         _verifyGiveEvent(takeData.giveAssets, takeData.takeReceiver, takeData.takeNonce, takeData.giveProof);
         _transitToTaken(takeData.takeReceiver, takeData.takeNonce);
+
         SafeERC20.safeTransfer(poolAsset, takeData.takeReceiver, assets_ + rewardAssets_);
     }
 

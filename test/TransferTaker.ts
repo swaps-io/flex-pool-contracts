@@ -25,7 +25,7 @@ const TEST_TUNE_DATA_ABI = parseAbiParameters([
 describe('TransferTaker', function () {
   async function deployFixture() {
     const publicClient = await hre.viem.getPublicClient();
-    const [regularClient, ownerClient] = await hre.viem.getWalletClients();
+    const [regularClient, ownerClient, anotherClient] = await hre.viem.getWalletClients();
 
     const giverAsset = await hre.viem.deployContract('TestToken', [
       'Test Token - Giver', // name
@@ -85,6 +85,7 @@ describe('TransferTaker', function () {
       publicClient,
       regularClient,
       ownerClient,
+      anotherClient,
       giverPool,
       giverAsset,
       giver,
@@ -234,7 +235,17 @@ describe('TransferTaker', function () {
   });
 
   it('Should take pool asset using give proof', async function () {
-    const { publicClient, regularClient, ownerClient, taker, takerAsset, takerPool, giver, verifier } = await loadFixture(deployFixture);
+    const {
+      publicClient,
+      regularClient,
+      ownerClient,
+      anotherClient,
+      taker,
+      takerAsset,
+      takerPool,
+      giver,
+      verifier,
+    } = await loadFixture(deployFixture);
 
     const giveAssets = 123_486n;
     const takeNonce = 0n;
@@ -242,7 +253,7 @@ describe('TransferTaker', function () {
     const protocolAssets = 10_000n;
     const rebalanceAssets = 20_000n;
     const poolInitAssets = takeAssets * 5n;
-    const takeReceiver = '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
+    const takeReceiver = checksumAddress(anotherClient.account.address);
     const giveProof = '0x0123456780abcdef';
     const takerData = encodeAbiParameters(TRANSFER_TAKE_DATA_ABI, [{
       giveAssets,
@@ -286,6 +297,18 @@ describe('TransferTaker', function () {
         takerData, // takerData
         tunerData, // tunerData
       ],
+    })).rejectedWith(`CallerNotReceiver("${checksumAddress(regularClient.account.address)}", "${takeReceiver}")`);
+
+    await expect(anotherClient.writeContract({
+      abi: takerPool.abi,
+      address: takerPool.address,
+      functionName: 'take',
+      args: [
+        takeAssets, // assets
+        taker.address, // taker
+        takerData, // takerData
+        tunerData, // tunerData
+      ],
     })).rejectedWith('InvalidEvent');
 
     const transferGiveTopics = encodeEventTopics({
@@ -318,7 +341,7 @@ describe('TransferTaker', function () {
       ],
     });
 
-    const hash = await regularClient.writeContract({
+    const hash = await anotherClient.writeContract({
       abi: takerPool.abi,
       address: takerPool.address,
       functionName: 'take',
@@ -384,7 +407,7 @@ describe('TransferTaker', function () {
     });
     expect(poolRebalanceAssets).equal(rebalanceAssets);
 
-    await expect(regularClient.writeContract({
+    await expect(anotherClient.writeContract({
       abi: takerPool.abi,
       address: takerPool.address,
       functionName: 'take',
@@ -398,7 +421,17 @@ describe('TransferTaker', function () {
   });
 
   it('Should take pool asset using give proof second time', async function () {
-    const { publicClient, regularClient, ownerClient, taker, takerAsset, takerPool, giver, verifier } = await loadFixture(deployFixture);
+    const {
+      publicClient,
+      regularClient,
+      ownerClient,
+      anotherClient,
+      taker,
+      takerAsset,
+      takerPool,
+      giver,
+      verifier,
+    } = await loadFixture(deployFixture);
 
     const giveAssets = 123_486n;
     const takeNonce = 0n;
@@ -407,7 +440,7 @@ describe('TransferTaker', function () {
     const protocolAssets = 10_000n;
     const rebalanceAssets = 20_000n;
     const poolInitAssets = takeAssets * 5n;
-    const takeReceiver = '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
+    const takeReceiver = checksumAddress(anotherClient.account.address);
     const giveProof = '0x0123456780abcdef';
     const takerData = encodeAbiParameters(TRANSFER_TAKE_DATA_ABI, [{
       giveAssets,
@@ -477,8 +510,20 @@ describe('TransferTaker', function () {
       ],
     });
 
+    await expect(regularClient.writeContract({
+      abi: takerPool.abi,
+      address: takerPool.address,
+      functionName: 'take',
+      args: [
+        takeAssets, // assets
+        taker.address, // taker
+        takerData, // takerData
+        tunerData, // tunerData
+      ],
+    })).rejectedWith(`CallerNotReceiver("${checksumAddress(regularClient.account.address)}", "${takeReceiver}")`);
+
     // First
-    await regularClient.writeContract({
+    await anotherClient.writeContract({
       abi: takerPool.abi,
       address: takerPool.address,
       functionName: 'take',
@@ -527,7 +572,7 @@ describe('TransferTaker', function () {
     });
 
     // Second
-    const hash = await regularClient.writeContract({
+    const hash = await anotherClient.writeContract({
       abi: takerPool.abi,
       address: takerPool.address,
       functionName: 'take',
@@ -593,7 +638,7 @@ describe('TransferTaker', function () {
     });
     expect(poolRebalanceAssets).equal(rebalanceAssets * 2n);
 
-    await expect(regularClient.writeContract({
+    await expect(anotherClient.writeContract({
       abi: takerPool.abi,
       address: takerPool.address,
       functionName: 'take',

@@ -18,10 +18,14 @@ abstract contract TrackToken {
     }
 
     function _trackTokenAfter(IERC20 token_, uint256 amountBefore_) internal {
+        _trackTokenAfter(token_, amountBefore_, msg.sender);
+    }
+
+    function _trackTokenAfter(IERC20 token_, uint256 amountBefore_, address receiver_) internal {
         uint256 amountAfter = token_.balanceOf(address(this));
         require(amountAfter >= amountBefore_, TrackTokenAffected(address(token_), amountAfter, amountBefore_));
         if (amountAfter > amountBefore_) {
-            SafeERC20.safeTransfer(token_, msg.sender, amountAfter - amountBefore_);
+            SafeERC20.safeTransfer(token_, receiver_, amountAfter - amountBefore_);
         }
     }
 }

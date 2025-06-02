@@ -16,9 +16,13 @@ abstract contract TrackNative {
     }
 
     function _trackNativeAfter(uint256 amountBefore_) internal {
+        _trackNativeAfter(amountBefore_, msg.sender);
+    }
+
+    function _trackNativeAfter(uint256 amountBefore_, address receiver_) internal {
         uint256 amountAfter = address(this).balance;
         if (amountAfter > amountBefore_) {
-            Address.sendValue(payable(msg.sender), amountAfter - amountBefore_);
+            Address.sendValue(payable(receiver_), amountAfter - amountBefore_);
         }
     }
 }

@@ -3,6 +3,7 @@
 pragma solidity ^0.8.26;
 
 import {IEscrowDst} from "@1inch/cross-chain-swap/contracts/interfaces/IEscrowDst.sol";
+import {TimelocksLib} from "@1inch/cross-chain-swap/contracts/libraries/TimelocksLib.sol";
 
 import {AddressLib, Address} from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
@@ -70,7 +71,8 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
             takeData.srcImmutables,
             takeData.dstImmutablesComplement
         );
-        IEscrowFactory(escrowFactory).createDstEscrow{value: msg.value}(immutables, takeData.srcCancellationTimestamp);
+        uint256 srcCancelTime = TimelocksLib.get(takeData.srcImmutables.timelocks, TimelocksLib.Stage.SrcCancellation);
+        IEscrowFactory(escrowFactory).createDstEscrow{value: msg.value}(immutables, srcCancelTime);
         _saveOriginalTaker(immutables, caller_);
     }
 
@@ -121,7 +123,6 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
             AddressLib.get(srcImmutables_.taker) == giveFusionGiver,
             SrcImmutablesTakerNotFusionGiver(AddressLib.get(srcImmutables_.taker), giveFusionGiver)
         );
-        // Fusion giver includes give `token` verification (it's valid if event is valid)
 
         (
             uint256 commonGiveAssets,

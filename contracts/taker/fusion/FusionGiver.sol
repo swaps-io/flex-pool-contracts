@@ -5,9 +5,8 @@ pragma solidity ^0.8.26;
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Address as AddressOZ} from "@openzeppelin/contracts/utils/Address.sol";
 
-import {IEscrowFactory} from "@1inch/cross-chain-swap/contracts/interfaces/IEscrowFactory.sol";
+import {IEscrowFactory, Timelocks} from "@1inch/cross-chain-swap/contracts/interfaces/IEscrowFactory.sol";
 import {IEscrowSrc} from "@1inch/cross-chain-swap/contracts/interfaces/IEscrowSrc.sol";
-import {TimelocksLib} from "@1inch/cross-chain-swap/contracts/libraries/TimelocksLib.sol";
 import {IMerkleStorageInvalidator} from "@1inch/cross-chain-swap/contracts/interfaces/IMerkleStorageInvalidator.sol";
 
 import {MakerTraitsLib} from "@1inch/limit-order-protocol/contracts/libraries/MakerTraitsLib.sol";
@@ -18,23 +17,32 @@ import {AddressLib, Address} from "@1inch/solidity-utils/contracts/libraries/Add
 
 import {AssetPermitter} from "../../permit/AssetPermitter.sol";
 
-import {IFusionGiver, IOrderMixin} from "./interfaces/IFusionGiver.sol";
+import {IFusionGiver, IOrderMixin, TimelocksLib} from "./interfaces/IFusionGiver.sol";
 
 import {FusionBase, IFlexPool, IBaseEscrow} from "./FusionBase.sol";
 
 contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
     address public immutable override aggregationRouter;
+    uint256 public immutable override minSafetyDeposit;
+    uint256 public immutable override minPublicWithdrawTime;
+    uint256 public immutable override maxPublicWithdrawTime;
 
     constructor(
         IFlexPool pool_,
         address controller_,
         address escrowFactory_,
-        address aggregationRouter_
+        address aggregationRouter_,
+        uint256 minSafetyDeposit_,
+        uint256 minPublicWithdrawTime_,
+        uint256 maxPublicWithdrawTime_
     )
         FusionBase(pool_, controller_, escrowFactory_)
         AssetPermitter(poolAsset)
     {
         aggregationRouter = aggregationRouter_;
+        minSafetyDeposit = minSafetyDeposit_;
+        minPublicWithdrawTime = minPublicWithdrawTime_;
+        maxPublicWithdrawTime = maxPublicWithdrawTime_;
 
         // Provide infinite allowance to the router. Any `msg.sender` interactions are limited by logic below, which is
         // designed to be safe - i.e. ensures to not spend extra assets during router interactions other than spending
@@ -142,10 +150,7 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         (makingAmount, takingAmount, orderHash) = abi.decode(result, (uint256, uint256, bytes32));
 
         IBaseEscrow.Immutables memory immutables = _extractEscrowSrcImmutables(order_, orderHash, makingAmount, data);
-        require(
-            AddressLib.get(immutables.token) == address(poolAsset),
-            EscrowMakerAssetNotPool(AddressLib.get(immutables.token), address(poolAsset))
-        );
+        _validateSrcImmutables(immutables);
 
         _saveOriginalTaker(immutables, msg.sender);
     }
@@ -240,5 +245,49 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         immutables.amount = makingAmount_;
         immutables.safetyDeposit = extraDataArgs_.deposits >> 128;
         immutables.timelocks = TimelocksLib.setDeployedAt(extraDataArgs_.timelocks, block.timestamp);
+    }
+
+    function _validateSrcImmutables(IBaseEscrow.Immutables memory immutables_) private view {
+        require(
+            AddressLib.get(immutables_.token) == address(poolAsset),
+            EscrowMakerAssetNotPool(AddressLib.get(immutables_.token), address(poolAsset))
+        );
+        require(
+            immutables_.safetyDeposit >= minSafetyDeposit,
+            InsufficientSafetyDeposit(immutables_.safetyDeposit, minSafetyDeposit)
+        );
+
+        Timelocks timelocks = TimelocksLib.setDeployedAt(immutables_.timelocks, 0);
+        _validateSrcTimelocks(timelocks);
+        _validateDstTimelocks(timelocks);
+    }
+
+    function _validateSrcTimelocks(Timelocks timelocks_) private view {
+        uint256 srcWithdraw = TimelocksLib.get(timelocks_, TimelocksLib.Stage.SrcWithdrawal);
+        uint256 srcPublicWithdraw = _validateTimelock(timelocks_, TimelocksLib.Stage.SrcPublicWithdrawal, srcWithdraw);
+        _validatePublicWithdrawTime(srcPublicWithdraw - srcWithdraw);
+
+        uint256 srcCancel = _validateTimelock(timelocks_, TimelocksLib.Stage.SrcCancellation, srcPublicWithdraw);
+        _validateTimelock(timelocks_, TimelocksLib.Stage.SrcPublicCancellation, srcCancel);
+    }
+
+    function _validateDstTimelocks(Timelocks timelocks_) private pure {
+        uint256 dstWithdraw = TimelocksLib.get(timelocks_, TimelocksLib.Stage.DstWithdrawal);
+        uint256 dstPublicWithdraw = _validateTimelock(timelocks_, TimelocksLib.Stage.DstPublicWithdrawal, dstWithdraw);
+        _validateTimelock(timelocks_, TimelocksLib.Stage.DstCancellation, dstPublicWithdraw);
+    }
+
+    function _validateTimelock(
+        Timelocks timelocks_,
+        TimelocksLib.Stage stage_,
+        uint256 previousTime_
+    ) private pure returns (uint256 time) {
+        time = TimelocksLib.get(timelocks_, stage_);
+        require(time >= previousTime_, InvalidTimelocksSequence(stage_, time, previousTime_));
+    }
+
+    function _validatePublicWithdrawTime(uint256 time_) private view {
+        require(time_ >= minPublicWithdrawTime, InsufficientPublicWithdrawTime(time_, minPublicWithdrawTime));
+        require(time_ <= maxPublicWithdrawTime, ExcessivePublicWithdrawTime(time_, maxPublicWithdrawTime));
     }
 }

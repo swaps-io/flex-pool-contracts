@@ -2585,7 +2585,7 @@ __metadata:
     solidity-coverage: "npm:0.8.16"
     ts-node: "npm:10.9.2"
     typescript: "npm:5.8.3"
-    viem: "npm:2.30.5"
+    viem: "npm:2.30.6"
   languageName: unknown
   linkType: soft
 
@@ -5495,9 +5495,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"viem@npm:2.30.5, viem@npm:^2.27.0":
-  version: 2.30.5
-  resolution: "viem@npm:2.30.5"
+"viem@npm:2.30.6, viem@npm:^2.27.0":
+  version: 2.30.6
+  resolution: "viem@npm:2.30.6"
   dependencies:
     "@noble/curves": "npm:1.9.1"
     "@noble/hashes": "npm:1.8.0"
@@ -5512,7 +5512,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/c183004caac620ef12239b650799bd8aa4d9accb24b7986cc7262c3aa2cb76734d1c78651399931eef762d85ece3c08bc20e80e21189312dc5d1f740c3febed0
+  checksum: 10c0/9b4b85c953363fc97dbba7d46a5fd0e5a81df16f83e82899d6092f5406b0efa2ad51aba1c4c2f084ae6421c0f1be598491473573523ef07a7d12d5fc3a087d7a
   languageName: node
   linkType: hard
 

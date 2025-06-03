@@ -25,3 +25,15 @@ index 46f13d5..06a58af 100644
  
  import { Timelocks } from "../libraries/TimelocksLib.sol";
  
+diff --git a/submodules/1inch/cross-chain-swap/contracts/interfaces/IMerkleStorageInvalidator.sol b/submodules/1inch/cross-chain-swap/contracts/interfaces/IMerkleStorageInvalidator.sol
+index 5b6a075..25119c8 100644
+--- a/submodules/1inch/cross-chain-swap/contracts/interfaces/IMerkleStorageInvalidator.sol
++++ b/submodules/1inch/cross-chain-swap/contracts/interfaces/IMerkleStorageInvalidator.sol
+@@ -1,6 +1,6 @@
+ // SPDX-License-Identifier: MIT
+ 
+-pragma solidity 0.8.23;
++pragma solidity ^0.8.23;
+ 
+ /**
+  * @title Merkle Storage Invalidator interface

@@ -8,6 +8,7 @@ import {Address as AddressOZ} from "@openzeppelin/contracts/utils/Address.sol";
 import {IEscrowFactory} from "@1inch/cross-chain-swap/contracts/interfaces/IEscrowFactory.sol";
 import {IEscrowSrc} from "@1inch/cross-chain-swap/contracts/interfaces/IEscrowSrc.sol";
 import {TimelocksLib} from "@1inch/cross-chain-swap/contracts/libraries/TimelocksLib.sol";
+import {IMerkleStorageInvalidator} from "@1inch/cross-chain-swap/contracts/interfaces/IMerkleStorageInvalidator.sol";
 
 import {MakerTraitsLib} from "@1inch/limit-order-protocol/contracts/libraries/MakerTraitsLib.sol";
 import {TakerTraitsLib, TakerTraits} from "@1inch/limit-order-protocol/contracts/libraries/TakerTraitsLib.sol";
@@ -18,7 +19,6 @@ import {AddressLib, Address} from "@1inch/solidity-utils/contracts/libraries/Add
 import {AssetPermitter} from "../../permit/AssetPermitter.sol";
 
 import {IFusionGiver, IOrderMixin} from "./interfaces/IFusionGiver.sol";
-import {IMerkleStorageInvalidator} from "./interfaces/IMerkleStorageInvalidator.sol";
 
 import {FusionBase, IFlexPool, IBaseEscrow} from "./FusionBase.sol";
 

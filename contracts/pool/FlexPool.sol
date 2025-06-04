@@ -99,21 +99,21 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
             _totalAssets += protocolAssets;
         }
 
-        uint256 rewardAssets = 0;
+        uint256 surplusAssets = 0;
         uint256 takerAssets = assets_;
         if (rebalanceAssets_ > 0) {
             giveAssets += uint256(rebalanceAssets_);
             rebalanceAssets += uint256(rebalanceAssets_);
         } else {
-            rewardAssets = uint256(-rebalanceAssets_);
-            takerAssets += rewardAssets;
-            rebalanceAssets -= rewardAssets;
+            surplusAssets = uint256(-rebalanceAssets_);
+            takerAssets += surplusAssets;
+            rebalanceAssets -= surplusAssets;
         }
 
         SafeERC20.safeTransfer(IERC20(asset()), taker_, takerAssets);
         _verifyAssets();
 
-        ITaker(taker_).take{value: msg.value}(msg.sender, assets_, rewardAssets, giveAssets, takerData_);
+        ITaker(taker_).take{value: msg.value}(msg.sender, assets_, surplusAssets, giveAssets, takerData_);
         emit Take(taker_, assets_, protocolAssets, rebalanceAssets_);
     }
 

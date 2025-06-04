@@ -52,7 +52,7 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
     function take(
         address caller_,
         uint256 assets_,
-        uint256 rewardAssets_,
+        uint256 surplusAssets_,
         uint256 giveAssets_,
         bytes calldata data_
     ) public payable override
@@ -68,7 +68,7 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
         _verifyGiveEvent(takeData.giveAssets, caller_, takeData.takeNonce, takeData.giveProof);
         _transitToTaken(caller_, takeData.takeNonce);
 
-        SafeERC20.safeTransfer(poolAsset, caller_, assets_ + rewardAssets_);
+        SafeERC20.safeTransfer(poolAsset, caller_, assets_ + surplusAssets_);
     }
 
     // ---

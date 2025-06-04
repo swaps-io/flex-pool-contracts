@@ -9,7 +9,7 @@ const TEST_TUNE_DATA_ABI = parseAbiParameters([
 ]);
 const TEST_TAKE_DATA_ABI = parseAbiParameters([
   'TestTakeData',
-  'struct TestTakeData { bytes32 id; address caller; uint256 assets; uint256 rewardAssets; uint256 giveAssets; uint256 value; }',
+  'struct TestTakeData { bytes32 id; address caller; uint256 assets; uint256 surplusAssets; uint256 giveAssets; uint256 value; }',
 ]);
 
 describe('FlexPool', function () {
@@ -224,7 +224,7 @@ describe('FlexPool', function () {
       id,
       caller: regularClient.account.address,
       assets,
-      rewardAssets: 0n,
+      surplusAssets: 0n,
       giveAssets: assets + protocolAssets + rebalanceAssets,
       value,
     }]);
@@ -809,7 +809,7 @@ describe('FlexPool', function () {
       id,
       caller: regularClient.account.address,
       assets,
-      rewardAssets: 0n,
+      surplusAssets: 0n,
       giveAssets: assets + protocolAssets + rebalanceAssets,
       value,
     }]);
@@ -987,7 +987,7 @@ describe('FlexPool', function () {
       id: firstId,
       caller: regularClient.account.address,
       assets,
-      rewardAssets: 0n,
+      surplusAssets: 0n,
       giveAssets: assets + protocolAssets + rebalanceAssets,
       value,
     }]);
@@ -995,7 +995,7 @@ describe('FlexPool', function () {
       id,
       caller: regularClient.account.address,
       assets,
-      rewardAssets: 0n,
+      surplusAssets: 0n,
       giveAssets: assets + protocolAssets + rebalanceAssets,
       value,
     }]);
@@ -1173,7 +1173,7 @@ describe('FlexPool', function () {
     expect(depositorAssets).equal(depositAssets + protocolAssets * 2n - 1n); // Gets all protocol assets as the only depositor
   });
 
-  it('Should perform second take of deposit with reward', async function () {
+  it('Should perform second take of deposit with surplus', async function () {
     const { asset, pool, taker, tuner, publicClient, regularClient, ownerClient } = await loadFixture(deployFixture);
 
     const firstId = '0x0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d';
@@ -1189,7 +1189,7 @@ describe('FlexPool', function () {
       id: firstId,
       caller: regularClient.account.address,
       assets,
-      rewardAssets: 0n,
+      surplusAssets: 0n,
       giveAssets: assets + protocolAssets + firstRebalanceAssets,
       value,
     }]);
@@ -1197,7 +1197,7 @@ describe('FlexPool', function () {
       id,
       caller: regularClient.account.address,
       assets,
-      rewardAssets: -rebalanceAssets,
+      surplusAssets: -rebalanceAssets,
       giveAssets: assets + protocolAssets,
       value,
     }]);
@@ -1292,7 +1292,7 @@ describe('FlexPool', function () {
     })).equal(true);
 
     const receipt = await publicClient.getTransactionReceipt({ hash });
-    console.log(`FlexPool.take deposit second reward gas: ${receipt.gasUsed}`);
+    console.log(`FlexPool.take deposit second surplus gas: ${receipt.gasUsed}`);
 
     const logs = parseEventLogs({
       abi: pool.abi,
@@ -1380,7 +1380,7 @@ describe('FlexPool', function () {
     expect(depositorAssets).equal(depositAssets + protocolAssets * 2n - 1n); // Gets all protocol assets as the only depositor
   });
 
-  it('Should equalize by transfer after two takes of deposit one with reward', async function () {
+  it('Should equalize by transfer after two takes of deposit one with surplus', async function () {
     const { asset, pool, taker, tuner, publicClient, regularClient, ownerClient } = await loadFixture(deployFixture);
 
     const firstId = '0x0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d';
@@ -1398,7 +1398,7 @@ describe('FlexPool', function () {
       id: firstId,
       caller: regularClient.account.address,
       assets,
-      rewardAssets: 0n,
+      surplusAssets: 0n,
       giveAssets: firstGiveAssets,
       value,
     }]);
@@ -1406,7 +1406,7 @@ describe('FlexPool', function () {
       id,
       caller: regularClient.account.address,
       assets,
-      rewardAssets: -rebalanceAssets,
+      surplusAssets: -rebalanceAssets,
       giveAssets,
       value,
     }]);
@@ -1571,7 +1571,7 @@ describe('FlexPool', function () {
       id,
       caller: regularClient.account.address,
       assets,
-      rewardAssets: 0n,
+      surplusAssets: 0n,
       giveAssets: assets + protocolAssets + rebalanceAssets,
       value,
     }]);
@@ -1751,7 +1751,7 @@ describe('FlexPool', function () {
       id,
       caller: regularClient.account.address,
       assets,
-      rewardAssets: 0n,
+      surplusAssets: 0n,
       giveAssets: assets + protocolAssets + rebalanceAssets,
       value,
     }]);

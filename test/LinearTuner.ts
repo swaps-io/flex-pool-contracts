@@ -77,7 +77,7 @@ describe('LinearTuner', function () {
       '0x', // data
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
-    expect(rebalanceAssets).equal(0n); // eq +400_000 -> +276_544, yet rewards empty
+    expect(rebalanceAssets).equal(0n); // eq +400_000 -> +276_544, yet budget is empty
   });
 
   it('Should tune for assets at far positive equilibrium', async function () {
@@ -105,7 +105,7 @@ describe('LinearTuner', function () {
       '0x', // data
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
-    expect(rebalanceAssets).equal(-10_000n); // eq +123_456 -> 0, all rewards
+    expect(rebalanceAssets).equal(-10_000n); // eq +123_456 -> 0, entire budget
   });
 
   it('Should tune for assets crossing positive-negative border of equilibrium', async function () {
@@ -119,6 +119,6 @@ describe('LinearTuner', function () {
       '0x', // data
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
-    expect(rebalanceAssets).equal(-8_310n); // eq +88_000 -> 0 -> -35_456, all rewards, 1489.152 ceil + 200 fixed
+    expect(rebalanceAssets).equal(-8_310n); // eq +88_000 -> 0 -> -35_456, entire budget, 1489.152 ceil + 200 fixed
   });
 });

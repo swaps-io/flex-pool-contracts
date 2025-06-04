@@ -50,13 +50,13 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
     function take(
         address caller_,
         uint256 assets_,
-        uint256 rewardAssets_,
+        uint256 surplusAssets_,
         uint256 giveAssets_,
         bytes calldata data_
     ) public payable override
         onlyPool
         trackNativeTo(caller_)
-        trackTokenBudgetTo(poolAsset, assets_ + rewardAssets_, caller_)
+        trackTokenBudgetTo(poolAsset, assets_ + surplusAssets_, caller_)
     {
         FusionTakeData calldata takeData;
         assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
@@ -64,7 +64,7 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
         }
 
         _verifySrcImmutables(takeData.srcImmutables, giveAssets_);
-        _verifyDstImmutablesComplement(takeData.dstImmutablesComplement, assets_ + rewardAssets_);
+        _verifyDstImmutablesComplement(takeData.dstImmutablesComplement, assets_ + surplusAssets_);
         _verifyGiveEvent(takeData.srcImmutables, takeData.dstImmutablesComplement, takeData.srcEscrowCreatedProof);
 
         IBaseEscrow.Immutables memory immutables = _composeDstImmutables(

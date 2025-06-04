@@ -8,7 +8,7 @@ struct TestTakeData {
     bytes32 id;
     address caller;
     uint256 assets;
-    uint256 rewardAssets;
+    uint256 surplusAssets;
     uint256 giveAssets;
     uint256 value;
 }
@@ -17,7 +17,7 @@ contract TestTaker is ITaker {
     error AlreadyTaken(bytes32 id);
     error InvalidCaller(address caller, address expectedCaller);
     error InvalidAssets(uint256 assets, uint256 expectedAssets);
-    error InvalidRewardAssets(uint256 assets, uint256 expectedAssets);
+    error InvalidSurplusAssets(uint256 assets, uint256 expectedAssets);
     error InvalidGiveAssets(uint256 assets, uint256 expectedAssets);
     error InvalidValue(uint256 value, uint256 expectedValue);
 
@@ -26,7 +26,7 @@ contract TestTaker is ITaker {
     function take(
         address caller_,
         uint256 assets_,
-        uint256 rewardAssets_,
+        uint256 surplusAssets_,
         uint256 giveAssets_,
         bytes calldata data_
     ) public payable override {
@@ -39,7 +39,7 @@ contract TestTaker is ITaker {
         taken[testData.id] = true;
         require(caller_ == testData.caller, InvalidCaller(caller_, testData.caller));
         require(assets_ == testData.assets, InvalidAssets(assets_, testData.assets));
-        require(rewardAssets_ == testData.rewardAssets, InvalidRewardAssets(rewardAssets_, testData.rewardAssets));
+        require(surplusAssets_ == testData.surplusAssets, InvalidSurplusAssets(surplusAssets_, testData.surplusAssets));
         require(giveAssets_ == testData.giveAssets, InvalidGiveAssets(giveAssets_, testData.giveAssets));
         require(msg.value == testData.value, InvalidValue(msg.value, testData.value));
     }

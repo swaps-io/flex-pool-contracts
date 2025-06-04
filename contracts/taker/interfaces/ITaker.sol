@@ -6,7 +6,7 @@ interface ITaker {
     function take(
         address caller,
         uint256 assets,
-        uint256 rewardAssets,
+        uint256 surplusAssets,
         uint256 giveAssets,
         bytes calldata data
     ) external payable;

@@ -1,12 +1,15 @@
 {
   "name": "flex-pool-contracts",
-  "packageManager": "yarn@4.9.1",
+  "packageManager": "yarn@4.9.2",
   "scripts": {
     "build": "yarn hardhat compile",
     "b": "yarn build",
     "test": "yarn hardhat test",
     "t": "yarn test",
+    "tn": "yarn test --no-compile",
     "tg": "yarn test --grep",
+    "tng": "yarn test --no-compile --grep",
+    "tgn": "yarn test --no-compile --grep",
     "lint": "yarn solhint --noPoster --max-warnings 0 'contracts/**/*.sol'",
     "l": "yarn lint"
   },

@@ -20,7 +20,7 @@ interface IFusionGiver is IFusionBase, IAssetPermitter {
     error InsufficientPublicWithdrawTime(uint256 time, uint256 minTime);
     error ExcessivePublicWithdrawTime(uint256 time, uint256 maxTime);
 
-    function aggregationRouter() external view returns (address);
+    function limitOrderProtocol() external view returns (address);
 
     function minSafetyDeposit() external view returns (uint256);
 

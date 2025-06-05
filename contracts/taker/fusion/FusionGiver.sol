@@ -22,7 +22,7 @@ import {IFusionGiver, IOrderMixin, TimelocksLib} from "./interfaces/IFusionGiver
 import {FusionBase, IFlexPool, IBaseEscrow} from "./FusionBase.sol";
 
 contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
-    address public immutable override aggregationRouter;
+    address public immutable override limitOrderProtocol;
     uint256 public immutable override minSafetyDeposit;
     uint256 public immutable override minPublicWithdrawTime;
     uint256 public immutable override maxPublicWithdrawTime;
@@ -31,7 +31,7 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         IFlexPool pool_,
         address controller_,
         address escrowFactory_,
-        address aggregationRouter_,
+        address limitOrderProtocol_,
         uint256 minSafetyDeposit_,
         uint256 minPublicWithdrawTime_,
         uint256 maxPublicWithdrawTime_
@@ -39,16 +39,16 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         FusionBase(pool_, controller_, escrowFactory_)
         AssetPermitter(poolAsset)
     {
-        aggregationRouter = aggregationRouter_;
+        limitOrderProtocol = limitOrderProtocol_;
         minSafetyDeposit = minSafetyDeposit_;
         minPublicWithdrawTime = minPublicWithdrawTime_;
         maxPublicWithdrawTime = maxPublicWithdrawTime_;
 
-        // Provide infinite allowance to the router. Any `msg.sender` interactions are limited by logic below, which is
-        // designed to be safe - i.e. ensures to not spend extra assets during router interactions other than spending
+        // Provide infinite allowance to the LOP. Any `msg.sender` interactions are limited by logic below, which is
+        // designed to be safe - i.e. ensures to not spend extra assets during LOP interactions other than spending
         // assets provided for the call. This contract also won't verify any contract signature nor allow other ways to
-        // obtain permit allowing to take the asset though the router.
-        poolAsset.approve(aggregationRouter_, type(uint256).max);
+        // obtain permit allowing to take the asset though the LOP.
+        poolAsset.approve(limitOrderProtocol_, type(uint256).max);
     }
 
     // `IOrderMixin` compatibility
@@ -146,7 +146,7 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         (address listener, bytes calldata data) = _extractPostInteraction(order_, extension_);
         require(listener == escrowFactory, PostInteractionListenerNotEscrowFactory(listener, escrowFactory));
 
-        bytes memory result = AddressOZ.functionCallWithValue(aggregationRouter, msg.data, msg.value);
+        bytes memory result = AddressOZ.functionCallWithValue(limitOrderProtocol, msg.data, msg.value);
         (makingAmount, takingAmount, orderHash) = abi.decode(result, (uint256, uint256, bytes32));
 
         IBaseEscrow.Immutables memory immutables = _extractEscrowSrcImmutables(order_, orderHash, makingAmount, data);
@@ -156,7 +156,7 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
     }
 
     function _emptyExtension() private pure returns (bytes calldata extension) {
-        // Based on `AggregationRouterV6` implementation
+        // Based on `OrderMixin` implementation
         extension = msg.data[:0];
     }
 
@@ -164,7 +164,7 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         TakerTraits takerTraits_,
         bytes calldata args_
     ) private pure returns (bytes calldata extension) {
-        // Based on `AggregationRouterV6._parseArgs` implementation
+        // Based on `OrderMixin._parseArgs` implementation
         if (TakerTraitsLib.argsHasTarget(takerTraits_)) {
             args_ = args_[20:];
         }
@@ -181,7 +181,7 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         IOrderMixin.Order calldata order_,
         bytes calldata extension_
     ) private pure returns (address listener, bytes calldata data) {
-        // Based on `AggregationRouterV6._fill` implementation
+        // Based on `OrderMixin._fill` implementation
         require(MakerTraitsLib.needPostInteractionCall(order_.makerTraits), NoPostInteractionCall(order_.makerTraits));
 
         data = ExtensionLib.postInteractionTargetAndData(extension_);

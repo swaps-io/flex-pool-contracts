@@ -22,11 +22,11 @@ Smart contracts of Flex Pool protocol.
     - [Available Assets](#available-assets)
     - [Rebalance Assets](#rebalance-assets)
   - [Tuner](#tuner)
+    - [Linear Tuner](#linear-tuner)
   - [Taker](#taker)
+    - [Transfer](#transfer)
+    - [1inch Fusion+](#1inch-fusion)
   - [Verifier](#verifier)
-- [Providers](#providers)
-  - [Transfer](#transfer)
-  - [1inch Fusion+](#1inch-fusion)
 - [Development](#development)
   - [Stack](#stack)
   - [Dependencies](#dependencies)
@@ -41,7 +41,7 @@ Smart contracts of Flex Pool protocol.
 
 Flex Pool Protocol allows solvers to [take](#take) the available pool [asset](#asset) on one chain and return it on
 another chain via a [give](#give) operation. These operations are carried out through a variety of secure whitelisted
-adapters to 3rd-party [providers](#providers).
+adapters to 3rd-party [providers](#transfer).
 
 Liquidity providers [deposit](#deposit) pool asset for protocol to cover the solver operations. In return, providers
 receive pool "shares", that represent their participation in pool liquidity. A share is backed by more assets as the
@@ -56,7 +56,7 @@ the take and give operations. If liquidity is not returned to its original chain
 ### Infrastructure
 
 Main [`FlexPool`](contracts/pool/FlexPool.sol) contract contains controlled whitelist of all allowed [take](#take)
-[providers](#providers) with attached [tuners](#tuner). Each taker is designed to guarantee a secure cross-chain
+[providers](#transfer) with attached [tuners](#tuner). Each taker is designed to guarantee a secure cross-chain
 transfer of required liquidity amount between pools in one logical [asset](#asset) enclave.
 
 Taker contract is bound to a specific 3rd-party provider. It's also often limited by deployment parameters to support
@@ -439,7 +439,7 @@ rebalance payment is transferred as _surplus_ to the `taker` contract along with
 
 The `taker` ensures that the total amount of the received assets is sufficient to guarantee at least _give_ assets for
 the pool on a target chain. The details of this security validation logic depend on implementation of a specific taker
-[provider](#providers). After validation, and, usually, transfer of _minimal_ needed asset to underlying protocol, a
+[provider](#transfer). After validation, and, usually, transfer of _minimal_ needed asset to underlying protocol, a
 take provider transfers unspent assets surplus to the take solver.
 
 #### Give
@@ -447,7 +447,7 @@ take provider transfers unspent assets surplus to the take solver.
 A give operation serves for returning liquidity to pool [enclave](#infrastructure). At its core, this operation is as
 simple as [asset](#asset) ERC-20 token transfer directly to the pool contract address.
 
-However, depending on a [taker](#taker) [provider](#providers) solver is planning to use for the [`take`](#take)
+However, depending on a [taker](#taker) [provider](#transfer) solver is planning to use for the [`take`](#take)
 operation, there can be an extra _giver_ contract that wraps this simple transfer into additional logic, which is
 required for validation on the _taker_ side. Solver is obligated to use such a contract according to the corresponding
 provider's docs. If misused, this may result in _asset loss_ in pool enclave.
@@ -654,27 +654,151 @@ The amount is accumulated from rebalance fees collected during [take](#take) ope
 
 ### Tuner
 
-TODO
+Tuner is a contract responsible for calculating `protocolAssets` and `rebalanceAssets` for a [take](#take) operation.
+It's bound to one or more [taker](#taker)s inside a [pool](#infrastructure) contract and may be assigned according to
+specifics of the taker group. A tuner contract must implement [`ITuner`](contracts/tuner/interfaces/ITuner.sol)
+interface that includes single `tune` view function.
+
+> ---
+>
+> - Function: __`tune`__ (_`view`_) of [`ITuner`](contracts/tuner/interfaces/ITuner.sol)
+>
+> - Params:
+>   - `assets` (`uint256`) - amount of assets to take
+>   - `data` (`bytes`) - extra data that may be used by an implementation
+>
+> - Returns:
+>   - `protocolAssets` (`uint256`) - amount of extra assets solver should return in favor of liquidity providers
+>   - `rebalanceAssets` (`int256`) - amount of [rebalance](#rebalance) assets solver should pay (+) or get paid (-)
+>
+> ---
+
+#### Linear Tuner
+
+[`LinearTuner`](contracts/tuner/linear/LinearTuner.sol) implementation of [tuner](#tuner) is configured with:
+- `pool` - pool contract address the tune is for
+- `protocolFixed` - fixed amount of assets to add to `protocolAssets`
+- `protocolPercent` - percent (in `ether` units, i.e. `10 ** 18` = `1%`) of the take `assets` to add to `protocolAssets`
+- `rebalanceFixed` - fixed amount of assets to add to `rebalanceAssets`
+- `rebalancePercent` - percent of the take `assets` to add to `protocolAssets`
+
+The `rebalanceFixed` and `rebalancePercent` are only applied to the part of the `assets` that is in below-zero pool
+[equilibrium](#equilibrium-assets). These assets will go to the [rebalance](#rebalance) reserve. For the part in
+above-zero equilibrium, the tuner subtracts amount from `rebalanceAssets` proportionally to the provided relieve.
+
+> [!TIP]
+>
+> _Linear tuner work example_
+>
+> Solver wants to take `1_000_000` of the `assets` via linear tuner configured with:
+> - `protocolFixed` = `10_000`
+> - `protocolPercent` = `1%`
+> - `rebalanceFixed` = `15_000`
+> - `rebalancePercent` = `2%`
+>
+> - If equilibrium is `-3_000_000` (will become `-4_000_000` after):
+>   - `protocolAssets` = `20_000` (`10_000` + `1_000_000` * `1%`)
+>   - `rebalanceAssets` = `35_000` (`15_000` + `1_000_000` * `2%`)
+>
+> - If equilibrium is `+300_000` (will become `-700_000` after):
+>   - assuming `pool` has `30_000` in rebalance reserve
+>   - `protocolAssets` = `20_000` (`10_000` + `1_000_000` * `1%`)
+>   - `rebalanceAssets` = `-1_000` (`15_000` + `700_000` * `2%`, relieve: `30_000` * `300_000` / `300_000`)
+>
+> - If equilibrium is `+2_500_000` (will become `+1_500_000` after):
+>   - assuming `pool` has `80_000` in rebalance reserve
+>   - `protocolAssets` = `20_000` (`10_000` + `1_000_000` * `1%`)
+>   - `rebalanceAssets` = `-32_000` (relieve: `80_000` * `1_000_000` / `2_500_000`)
 
 ### Taker
 
-TODO
+Taker is a contract that receives the [take](#take) asset in amount of `assets` + `surplusAssets` from pool and handles
+it according to the underlying provider's logic. Along with the asset, the [tuned](#tuner) amounts and other data are
+passed for taker to ensure that the provider can guarantee the minimal amount of asset back during [give](#give)
+operation on another chain. Taker must implement [`ITuner`](contracts/taker/interfaces/ITaker.sol) interface with one
+`take` function.
+
+> ---
+>
+> - Function: __`take`__ of [`ITaker`](contracts/taker/interfaces/ITaker.sol)
+>
+> - Params:
+>   - `caller` (`address`) - address of pool's `take` original caller
+>   - `assets` (`uint256`) - amount of assets to take
+>   - `surplusAssets` (`uint256`) - extra assets besides the `assets` provided for taker
+>   - `giveAssets` (`uint256`) - amount of assets to take
+>   - `data` (`bytes`) - extra data that may be used by an implementation
+>
+> ---
+
+> [!IMPORTANT]
+>
+> Taker implementation must:
+> - verify that the `take` call is _only from_ trusted `pool` contract address
+> - _guarantee_ that `giveAssets` will be (or already) provided back to the pool [enclave](#infrastructure)
+> - _return unused_ part of `assets` + `surplusAssets` to `caller` (or agreed address extracted from `data`)
+
+#### Transfer
+
+[`TransferTaker`](contracts/taker/transfer/TransferTaker.sol) implementation of [taker](#taker) provides ability to
+[take](#take) available [asset](#asset) from pool _after_ [giving](#give) asset on another chains though. The give
+operation is performed via [`TransferGiver`](contracts/taker/transfer/TransferGiver.sol) contract, that emits
+`TransferGive` event that is verified by the taker.
+
+> [!IMPORTANT]
+>
+> `TransferTaker` keep record of already `taken` operation so double-takes are not possible. The records are per take
+> asset `receiver` (i.e. taker's `caller`) and `nonce`.
+>
+> Managing `nonce`s is `receiver`'s responsibility and should be done with _caution_. Sending asset via _two or more_
+> `give` (or `giveHold`) functions with _the same_ `takeChain`, `takeReceiver` and `takeNonce` params will result in
+> only _one_ take possible (since subsequent ones will be blocked after the record of a first one).
+
+#### 1inch Fusion+
+
+[`FusionTaker`](contracts/taker/fusion/FusionTaker.sol) implementation of [taker](#taker) provides ability to
+[take](#take) asset using [1inch Fusion+](https://portal.1inch.dev/documentation/apis/swap/fusion-plus/introduction)
+protocol.
+
+The taker comes with [`FusionGiver`](contracts/taker/fusion/FusionGiver.sol) contract that serves as starting point
+of the take process. First, solver calls `fillOrder` contract function, that has the same parameters as the one in
+`IOrderMixin` interface of Limit Order Protocol. The order must contain post-interaction to deploy `EscrowSrc` via
+escrow factory with pool asset deposit to it from the maker. The `FusionGiver` becomes 1inch taker of the order,
+providing the _original_ taker with `IEscrowSrc` required functionality - withdraw, cancel, rescue (calls should be to
+the `FusionGiver` contract). Public phases can be called directly on the escrow contract.
+
+Once source escrow is created, the solver obtains proof of `SrcEscrowCreated` event and calls the `take` function of
+the pool with `FusionTaker` as `taker` and corresponding `takerData`. After validation, `EscrowDst` deploy is called
+on factory with `FusionTaker` assigned as 1inch order taker. Pool asset is transferred then to the escrow contract.
+
+Then the order proceeds according to the 1inch Fusion+ protocol. On success, the maker asset in source chain is
+transferred to the pool (transiting though `FusionGiver` contract if it's a _public_ withdraw), on cancel - back to
+the maker. On destination chain, cancellation returns asset back to pool (possibly though `FusionTaker`), on success -
+to a specified receiver.
 
 ### Verifier
 
-TODO
+Verifier contract is part of external [Flex Proof](https://github.com/swaps-io/flex-proof-contracts) system. It allows
+to verify presence of events of interest on other chains. This functionality is commonly used by [taker](#taker)
+implementations to ensure [take](#take) operation soundness. Single `validateEvent` function definition can be found in
+[`IEventVerifier`](contracts/verifier/interfaces/IEventVerifier.sol).
 
-## Providers
+> ---
+>
+> - Function: __`verifyEvent`__ of [`IEventVerifier`](contracts/verifier/interfaces/IEventVerifier.sol)
+>
+> - Params:
+>   - `chain` (`uint256`) - chain ID of the event to verify
+>   - `emitter` (`address`) - address of contract that emitted the event
+>   - `topics` (`bytes32[]`) - topics of the event
+>   - `data` (`bytes`) - data of the event
+>   - `proof` (`bytes`) - data used by verifier for routing and implementation-specific validation
+>
+> ---
 
-TODO
-
-### Transfer
-
-TODO
-
-### 1inch Fusion+
-
-TODO
+> [!NOTE]
+>
+> The `validateEvent` function _reverts_ if event is not valid - including never existed, haven't reached finality, etc.
 
 ## Development
 

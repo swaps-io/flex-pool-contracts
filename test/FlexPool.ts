@@ -3,15 +3,6 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { checksumAddress, encodeAbiParameters, parseAbiParameters, parseEventLogs, zeroAddress } from 'viem';
 
-const TEST_TUNE_DATA_ABI = parseAbiParameters([
-  'TestTuneData',
-  'struct TestTuneData { uint256 assets; uint256 protocolAssets; int256 rebalanceAssets; }',
-]);
-const TEST_TAKE_DATA_ABI = parseAbiParameters([
-  'TestTakeData',
-  'struct TestTakeData { bytes32 id; address caller; uint256 assets; uint256 surplusAssets; uint256 giveAssets; uint256 value; }',
-]);
-
 describe('FlexPool', function () {
   async function deployFixture() {
     const publicClient = await hre.viem.getPublicClient();
@@ -31,7 +22,7 @@ describe('FlexPool', function () {
       ownerClient.account.address, // initialOwner
     ]);
 
-    const taker = await hre.viem.deployContract('TestTaker');
+    const taker = await hre.viem.deployContract('TestTaker', [pool.address]);
 
     const tuner = await hre.viem.deployContract('TestTuner');
 
@@ -57,7 +48,7 @@ describe('FlexPool', function () {
   it('Should not allow unknown taker', async function () {
     const { pool, regularClient } = await loadFixture(deployFixture);
 
-    const taker = '0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF';
+    const taker = checksumAddress(regularClient.account.address);
 
     await expect(
       regularClient.writeContract({
@@ -66,9 +57,6 @@ describe('FlexPool', function () {
         functionName: 'take',
         args: [
           1n, // assets
-          taker, // taker
-          '0x', // takerData
-          '0x', // tunerData
         ],
       }),
     ).rejectedWith(`NoTuner("${taker}")`);
@@ -216,23 +204,35 @@ describe('FlexPool', function () {
     const { asset, pool, taker, tuner, publicClient, regularClient, ownerClient } = await loadFixture(deployFixture);
 
     const id = '0x1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d';
-    const value = 123_456n;
     const assets = 133_701_337n;
     const protocolAssets = 3_302n;
     const rebalanceAssets = 137_137n;
-    const takerData = encodeAbiParameters(TEST_TAKE_DATA_ABI, [{
-      id,
-      caller: regularClient.account.address,
-      assets,
-      surplusAssets: 0n,
-      giveAssets: assets + protocolAssets + rebalanceAssets,
-      value,
-    }]);
-    const tunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
-      assets,
-      protocolAssets,
-      rebalanceAssets,
-    }]);
+    const minGiveAssets = assets + protocolAssets + rebalanceAssets;
+
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setExpectedAssets',
+      args: [
+        assets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setProtocolAssets',
+      args: [
+        protocolAssets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setRebalanceAssets',
+      args: [
+        rebalanceAssets, // assets
+      ],
+    });
 
     await ownerClient.writeContract({
       abi: pool.abi,
@@ -262,16 +262,14 @@ describe('FlexPool', function () {
     })).equal(false);
 
     const hash = await regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
+        id, // id
         assets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        minGiveAssets // expectedMinGiveAssets
       ],
-      value,
     });
 
     expect(await publicClient.readContract({
@@ -801,23 +799,35 @@ describe('FlexPool', function () {
     const id = '0x1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d';
     const depositAssets = 5_000_000_000n;
     const mintAssets = depositAssets + 3_000_000_000n;
-    const value = 123_456n;
     const assets = 133_701_337n;
     const protocolAssets = 3_302n;
     const rebalanceAssets = 137_137n;
-    const takerData = encodeAbiParameters(TEST_TAKE_DATA_ABI, [{
-      id,
-      caller: regularClient.account.address,
-      assets,
-      surplusAssets: 0n,
-      giveAssets: assets + protocolAssets + rebalanceAssets,
-      value,
-    }]);
-    const tunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
-      assets,
-      protocolAssets,
-      rebalanceAssets,
-    }]);
+    const minGiveAssets = assets + protocolAssets + rebalanceAssets;
+
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setExpectedAssets',
+      args: [
+        assets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setProtocolAssets',
+      args: [
+        protocolAssets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setRebalanceAssets',
+      args: [
+        rebalanceAssets, // assets
+      ],
+    });
 
     await ownerClient.writeContract({
       abi: asset.abi,
@@ -864,16 +874,14 @@ describe('FlexPool', function () {
     })).equal(false);
 
     const hash = await regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
+        id, // id
         assets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        minGiveAssets, // expectedMinGiveAssets
       ],
-      value,
     });
 
     expect(await publicClient.readContract({
@@ -908,9 +916,6 @@ describe('FlexPool', function () {
       ],
     });
     expect(takerAssets).equal(assets);
-
-    const takerNative = await publicClient.getBalance({ address: taker.address });
-    expect(takerNative).equal(value);
 
     const poolAssets = await publicClient.readContract({
       abi: asset.abi,
@@ -979,31 +984,35 @@ describe('FlexPool', function () {
     const id = '0x1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d';
     const depositAssets = 5_000_000_000n;
     const mintAssets = depositAssets + 3_000_000_000n;
-    const value = 123_456n;
     const assets = 133_701_337n;
     const protocolAssets = 3_302n;
     const rebalanceAssets = 137_137n;
-    const firstTakerData = encodeAbiParameters(TEST_TAKE_DATA_ABI, [{
-      id: firstId,
-      caller: regularClient.account.address,
-      assets,
-      surplusAssets: 0n,
-      giveAssets: assets + protocolAssets + rebalanceAssets,
-      value,
-    }]);
-    const takerData = encodeAbiParameters(TEST_TAKE_DATA_ABI, [{
-      id,
-      caller: regularClient.account.address,
-      assets,
-      surplusAssets: 0n,
-      giveAssets: assets + protocolAssets + rebalanceAssets,
-      value,
-    }]);
-    const tunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
-      assets,
-      protocolAssets,
-      rebalanceAssets,
-    }]);
+    const minGiveAssets = assets + protocolAssets + rebalanceAssets;
+
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setExpectedAssets',
+      args: [
+        assets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setProtocolAssets',
+      args: [
+        protocolAssets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setRebalanceAssets',
+      args: [
+        rebalanceAssets, // assets
+      ],
+    });
 
     await ownerClient.writeContract({
       abi: asset.abi,
@@ -1044,16 +1053,14 @@ describe('FlexPool', function () {
 
     // First
     await regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
+        firstId, // id
         assets, // assets
-        taker.address, // taker
-        firstTakerData, // takerData
-        tunerData, // tunerData
+        minGiveAssets, // expectedMinGiveAssets
       ],
-      value,
     });
 
     expect(await publicClient.readContract({
@@ -1065,16 +1072,14 @@ describe('FlexPool', function () {
 
     // Second
     const hash = await regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
+        id, // id
         assets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        minGiveAssets, // expectedMinGiveAssets
       ],
-      value,
     });
 
     expect(await publicClient.readContract({
@@ -1109,9 +1114,6 @@ describe('FlexPool', function () {
       ],
     });
     expect(takerAssets).equal(assets * 2n);
-
-    const takerNative = await publicClient.getBalance({ address: taker.address });
-    expect(takerNative).equal(value * 2n);
 
     const poolAssets = await publicClient.readContract({
       abi: asset.abi,
@@ -1180,37 +1182,37 @@ describe('FlexPool', function () {
     const id = '0x1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d';
     const depositAssets = 5_000_000_000n;
     const mintAssets = depositAssets + 3_000_000_000n;
-    const value = 123_456n;
     const assets = 133_701_337n;
     const protocolAssets = 3_302n;
     const firstRebalanceAssets = 137_137n;
     const rebalanceAssets = -13_337n;
-    const firstTakerData = encodeAbiParameters(TEST_TAKE_DATA_ABI, [{
-      id: firstId,
-      caller: regularClient.account.address,
-      assets,
-      surplusAssets: 0n,
-      giveAssets: assets + protocolAssets + firstRebalanceAssets,
-      value,
-    }]);
-    const takerData = encodeAbiParameters(TEST_TAKE_DATA_ABI, [{
-      id,
-      caller: regularClient.account.address,
-      assets,
-      surplusAssets: -rebalanceAssets,
-      giveAssets: assets + protocolAssets,
-      value,
-    }]);
-    const firstTunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
-      assets,
-      protocolAssets,
-      rebalanceAssets: firstRebalanceAssets,
-    }]);
-    const tunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
-      assets,
-      protocolAssets,
-      rebalanceAssets,
-    }]);
+    const firstMinGiveAssets = assets + protocolAssets + firstRebalanceAssets;
+    const minGiveAssets = assets + protocolAssets;
+
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setExpectedAssets',
+      args: [
+        assets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setProtocolAssets',
+      args: [
+        protocolAssets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setRebalanceAssets',
+      args: [
+        firstRebalanceAssets, // assets
+      ],
+    });
 
     await ownerClient.writeContract({
       abi: asset.abi,
@@ -1251,16 +1253,14 @@ describe('FlexPool', function () {
 
     // First
     await regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
+        firstId, // id
         assets, // assets
-        taker.address, // taker
-        firstTakerData, // takerData
-        firstTunerData, // tunerData
+        firstMinGiveAssets, // expectedMinGiveAssets
       ],
-      value,
     });
 
     expect(await publicClient.readContract({
@@ -1270,18 +1270,25 @@ describe('FlexPool', function () {
       args: [id],
     })).equal(false);
 
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setRebalanceAssets',
+      args: [
+        rebalanceAssets, // assets
+      ],
+    });
+
     // Second
     const hash = await regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
+        id, // id
         assets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        minGiveAssets, // expectedMinGiveAssets
       ],
-      value,
     });
 
     expect(await publicClient.readContract({
@@ -1316,9 +1323,6 @@ describe('FlexPool', function () {
       ],
     });
     expect(takerAssets).equal(assets * 2n + -rebalanceAssets);
-
-    const takerNative = await publicClient.getBalance({ address: taker.address });
-    expect(takerNative).equal(value * 2n);
 
     const poolAssets = await publicClient.readContract({
       abi: asset.abi,
@@ -1387,39 +1391,37 @@ describe('FlexPool', function () {
     const id = '0x1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d';
     const depositAssets = 5_000_000_000n;
     const mintAssets = depositAssets + 3_000_000_000n;
-    const value = 123_456n;
     const assets = 133_701_337n;
     const protocolAssets = 3_302n;
     const firstRebalanceAssets = 137_137n;
     const rebalanceAssets = -13_337n;
-    const firstGiveAssets = assets + protocolAssets + firstRebalanceAssets;
-    const giveAssets = assets + protocolAssets;
-    const firstTakerData = encodeAbiParameters(TEST_TAKE_DATA_ABI, [{
-      id: firstId,
-      caller: regularClient.account.address,
-      assets,
-      surplusAssets: 0n,
-      giveAssets: firstGiveAssets,
-      value,
-    }]);
-    const takerData = encodeAbiParameters(TEST_TAKE_DATA_ABI, [{
-      id,
-      caller: regularClient.account.address,
-      assets,
-      surplusAssets: -rebalanceAssets,
-      giveAssets,
-      value,
-    }]);
-    const firstTunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
-      assets,
-      protocolAssets,
-      rebalanceAssets: firstRebalanceAssets,
-    }]);
-    const tunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
-      assets,
-      protocolAssets,
-      rebalanceAssets,
-    }]);
+    const firstMinGiveAssets = assets + protocolAssets + firstRebalanceAssets;
+    const minGiveAssets = assets + protocolAssets;
+
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setExpectedAssets',
+      args: [
+        assets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setProtocolAssets',
+      args: [
+        protocolAssets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setRebalanceAssets',
+      args: [
+        firstRebalanceAssets, // assets
+      ],
+    });
 
     await ownerClient.writeContract({
       abi: asset.abi,
@@ -1460,30 +1462,35 @@ describe('FlexPool', function () {
 
     // First
     await regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
+        firstId, // id
         assets, // assets
-        taker.address, // taker
-        firstTakerData, // takerData
-        firstTunerData, // tunerData
+        firstMinGiveAssets, // expectedMinGiveAssets
       ],
-      value,
+    });
+
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setRebalanceAssets',
+      args: [
+        rebalanceAssets, // assets
+      ],
     });
 
     // Second
     await regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
+        id, // id
         assets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        minGiveAssets, // expectedMinGiveAssets
       ],
-      value,
     });
 
     // Fulfill give expectations
@@ -1493,7 +1500,7 @@ describe('FlexPool', function () {
       functionName: 'mint',
       args: [
         pool.address, // account
-        firstGiveAssets + giveAssets, // assets
+        firstMinGiveAssets + minGiveAssets, // assets
       ],
     });
 
@@ -1563,23 +1570,35 @@ describe('FlexPool', function () {
     const id = '0x1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d';
     const depositAssets = 5_000_000_000n;
     const mintAssets = depositAssets + 3_000_000_000n;
-    const value = 123_456n;
     const assets = 133_701_337n;
     const protocolAssets = 3_302n;
     const rebalanceAssets = 137_137n;
-    const takerData = encodeAbiParameters(TEST_TAKE_DATA_ABI, [{
-      id,
-      caller: regularClient.account.address,
-      assets,
-      surplusAssets: 0n,
-      giveAssets: assets + protocolAssets + rebalanceAssets,
-      value,
-    }]);
-    const tunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
-      assets,
-      protocolAssets,
-      rebalanceAssets,
-    }]);
+    const minGiveAssets = assets + protocolAssets + rebalanceAssets;
+
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setExpectedAssets',
+      args: [
+        assets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setProtocolAssets',
+      args: [
+        protocolAssets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setRebalanceAssets',
+      args: [
+        rebalanceAssets, // assets
+      ],
+    });
 
     await ownerClient.writeContract({
       abi: asset.abi,
@@ -1619,16 +1638,14 @@ describe('FlexPool', function () {
     });
 
     await regularClient.writeContract({
-      abi: pool.abi,
-      address: pool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
+        id, // id
         assets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        minGiveAssets, // expectedMinGiveAssets
       ],
-      value,
     });
 
     await expect(

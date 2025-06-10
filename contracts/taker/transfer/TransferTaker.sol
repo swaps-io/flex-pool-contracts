@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.26;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 
 import {PoolAware, IFlexPool} from "../../pool/aware/PoolAware.sol";
@@ -14,14 +13,12 @@ import {AssetRescuer} from "../../rescue/AssetRescuer.sol";
 import {Controllable} from "../../control/Controllable.sol";
 
 import {DecimalsLib} from "../../util/libraries/DecimalsLib.sol";
-import {TrackNative} from "../../util/track/TrackNative.sol";
+import {TrackToken} from "../../util/track/TrackToken.sol";
 
 import {ITransferTaker} from "./interfaces/ITransferTaker.sol";
 import {ITransferGiver} from "./interfaces/ITransferGiver.sol";
 
-import {TransferTakeData} from "./structs/TransferTakeData.sol";
-
-contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer, Controllable, TrackNative {
+contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer, Controllable, TrackToken {
     uint256 public immutable override giveChain;
     address public immutable override giveTransferGiver;
     int256 public immutable override giveDecimalsShift;
@@ -50,25 +47,15 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
     }
 
     function take(
-        address caller_,
         uint256 assets_,
-        uint256 surplusAssets_,
+        uint256 nonce_,
         uint256 giveAssets_,
-        bytes calldata data_
-    ) public payable override
-        onlyPool
-        trackNativeTo(caller_)
-    {
-        TransferTakeData calldata takeData;
-        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
-            takeData := add(data_.offset, 32)
-        }
-
-        _verifyGiveAssets(giveAssets_, takeData.giveAssets);
-        _verifyGiveEvent(takeData.giveAssets, caller_, takeData.takeNonce, takeData.giveProof);
-        _transitToTaken(caller_, takeData.takeNonce);
-
-        SafeERC20.safeTransfer(poolAsset, caller_, assets_ + surplusAssets_);
+        bytes calldata giveProof_
+    ) external override trackToken(poolAsset) {
+        uint256 minGiveAssets = pool.take(assets_);
+        _verifyGiveAssets(minGiveAssets, giveAssets_);
+        _verifyGiveEvent(giveAssets_, msg.sender, nonce_, giveProof_);
+        _transitToTaken(msg.sender, nonce_);
     }
 
     // ---
@@ -83,9 +70,9 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
 
     // ---
 
-    function _verifyGiveAssets(uint256 assets_, uint256 giveAssets_) private view {
-        (uint256 commonAssets, uint256 commonGiveAssets) = DecimalsLib.common(assets_, giveAssets_, giveDecimalsShift);
-        require(commonGiveAssets >= commonAssets, InsufficientGiveAssets(commonGiveAssets, commonAssets));
+    function _verifyGiveAssets(uint256 minAssets_, uint256 assets_) private view {
+        (uint256 commonMinAssets, uint256 commonAssets) = DecimalsLib.common(minAssets_, assets_, giveDecimalsShift);
+        require(commonAssets >= commonMinAssets, InsufficientGiveAssets(commonAssets, commonMinAssets));
     }
 
     function _transitToTaken(address receiver_, uint256 nonce_) private {

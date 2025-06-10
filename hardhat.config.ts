@@ -24,10 +24,6 @@ const solc = (overrides: SolcOverrides = {}): SolcUserConfig => {
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [solc()],
-    overrides: {
-      'contracts/pool/FlexPoolCancun.sol': solc({ evmVersion: 'cancun' }),
-      '@openzeppelin/contracts/utils/TransientSlot.sol': solc({ evmVersion: 'cancun' }),
-    },
   },
   contractSizer: {
     alphaSort: true,
@@ -36,7 +32,6 @@ const config: HardhatUserConfig = {
     strict: true,
     only: [
       'contracts/pool/FlexPool.sol',
-      'contracts/pool/FlexPoolCancun.sol',
       'contracts/tuner/linear/LinearTuner.sol',
       'contracts/taker/transfer/TransferGiver.sol',
       'contracts/taker/transfer/TransferTaker.sol',

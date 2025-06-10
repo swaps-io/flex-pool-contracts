@@ -13,20 +13,24 @@ struct TestTuneData {
 contract TestTuner is ITuner {
     error InvalidAssets(uint256 assets, uint256 expectedAssets);
 
-    function tune(
-        uint256 assets_,
-        bytes calldata data_
-    ) public pure override returns (
-        uint256 protocolAssets,
-        int256 rebalanceAssets
-    ) {
-        TestTuneData calldata testData;
-        assembly ("memory-safe") {
-            testData := data_.offset
-        }
+    uint256 public expectedAssets;
+    uint256 public protocolAssets;
+    int256 public rebalanceAssets;
 
-        require(assets_ == testData.assets, InvalidAssets(assets_, testData.assets));
-        protocolAssets = testData.protocolAssets;
-        rebalanceAssets = testData.rebalanceAssets;
+    function tune(uint256 assets_) public view override returns (uint256, int256) {
+        require(assets_ == expectedAssets, InvalidAssets(assets_, expectedAssets));
+        return (protocolAssets, rebalanceAssets);
+    }
+
+    function setExpectedAssets(uint256 assets_) public {
+        expectedAssets = assets_;
+    }
+
+    function setProtocolAssets(uint256 assets_) public {
+        protocolAssets = assets_;
+    }
+
+    function setRebalanceAssets(int256 assets_) public {
+        rebalanceAssets = assets_;
     }
 }

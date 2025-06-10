@@ -11,9 +11,7 @@ import {VerifierAware, IEventVerifier} from "../../verifier/aware/VerifierAware.
 
 import {DecimalsLib} from "../../util/libraries/DecimalsLib.sol";
 
-import {IFusionTaker} from "./interfaces/IFusionTaker.sol";
-
-import {FusionTakeData, IEscrowFactory, IBaseEscrow} from "./structs/FusionTakeData.sol";
+import {IFusionTaker, IBaseEscrow, IEscrowFactory} from "./interfaces/IFusionTaker.sol";
 
 import {FusionBase, IFlexPool} from "./FusionBase.sol";
 
@@ -48,32 +46,29 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
     }
 
     function take(
-        address caller_,
         uint256 assets_,
-        uint256 surplusAssets_,
-        uint256 giveAssets_,
-        bytes calldata data_
-    ) public payable override
-        onlyPool
-        trackNativeTo(caller_)
-        trackTokenBudgetTo(poolAsset, assets_ + surplusAssets_, caller_)
+        IBaseEscrow.Immutables calldata srcImmutables_,
+        IEscrowFactory.DstImmutablesComplement calldata dstImmutablesComplement_,
+        bytes calldata srcEscrowCreatedProof_
+    ) public override payable
+        trackNative
+        trackToken(poolAsset)
     {
-        FusionTakeData calldata takeData;
-        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
-            takeData := add(data_.offset, 32)
-        }
+        uint256 balanceBefore = poolAsset.balanceOf(address(this));
+        uint256 minGiveAssets = pool.take(assets_);
+        uint256 takerAssets = poolAsset.balanceOf(address(this)) - balanceBefore;
 
-        _verifySrcImmutables(takeData.srcImmutables, giveAssets_);
-        _verifyDstImmutablesComplement(takeData.dstImmutablesComplement, assets_ + surplusAssets_);
-        _verifyGiveEvent(takeData.srcImmutables, takeData.dstImmutablesComplement, takeData.srcEscrowCreatedProof);
+        _verifySrcImmutables(srcImmutables_, minGiveAssets);
+        _verifyDstImmutablesComplement(dstImmutablesComplement_, takerAssets);
+        _verifyGiveEvent(srcImmutables_, dstImmutablesComplement_, srcEscrowCreatedProof_);
 
         IBaseEscrow.Immutables memory immutables = _composeDstImmutables(
-            takeData.srcImmutables,
-            takeData.dstImmutablesComplement
+            srcImmutables_,
+            dstImmutablesComplement_
         );
-        uint256 srcCancelTime = TimelocksLib.get(takeData.srcImmutables.timelocks, TimelocksLib.Stage.SrcCancellation);
+        uint256 srcCancelTime = TimelocksLib.get(srcImmutables_.timelocks, TimelocksLib.Stage.SrcCancellation);
         IEscrowFactory(escrowFactory).createDstEscrow{value: msg.value}(immutables, srcCancelTime);
-        _saveOriginalTaker(immutables, caller_);
+        _saveOriginalTaker(immutables, msg.sender);
     }
 
     // `IEscrowDst` compatibility
@@ -115,28 +110,23 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
 
     // ---
 
-    function _verifySrcImmutables(
-        IBaseEscrow.Immutables calldata srcImmutables_,
-        uint256 giveAssets_
-    ) private view {
+    function _verifySrcImmutables(IBaseEscrow.Immutables calldata srcImmutables_, uint256 minAssets_) private view {
         require(
             AddressLib.get(srcImmutables_.taker) == giveFusionGiver,
             SrcImmutablesTakerNotFusionGiver(AddressLib.get(srcImmutables_.taker), giveFusionGiver)
         );
 
-        (
-            uint256 commonGiveAssets,
-            uint256 commonImmutablesAssets
-        ) = DecimalsLib.common(giveAssets_, srcImmutables_.amount, giveDecimalsShift);
-        require(
-            commonImmutablesAssets >= commonGiveAssets,
-            InsufficientSrcImmutablesAssets(commonImmutablesAssets, commonGiveAssets)
+        (uint256 commonMinAssets, uint256 commonAssets) = DecimalsLib.common(
+            minAssets_,
+            srcImmutables_.amount,
+            giveDecimalsShift
         );
+        require(commonAssets >= commonMinAssets, InsufficientSrcImmutablesAssets(commonAssets, commonMinAssets));
     }
 
     function _verifyDstImmutablesComplement(
         IEscrowFactory.DstImmutablesComplement calldata dstImmutablesComplement_,
-        uint256 takeAssets_
+        uint256 takerAssets_
     ) private view {
         require(
             dstImmutablesComplement_.chainId == block.chainid,
@@ -147,8 +137,8 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
             DstImmutablesComplementAssetNotPool(AddressLib.get(dstImmutablesComplement_.token), address(poolAsset))
         );
         require(
-            dstImmutablesComplement_.amount <= takeAssets_,
-            ExcessiveDstImmutablesComplementAssets(dstImmutablesComplement_.amount, takeAssets_)
+            dstImmutablesComplement_.amount <= takerAssets_,
+            ExcessiveDstImmutablesComplementAssets(dstImmutablesComplement_.amount, takerAssets_)
         );
     }
 

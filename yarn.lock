@@ -23,6 +23,12 @@ __metadata:
   languageName: node
   linkType: soft
 
+"@across-protocol/contracts@link:./submodules/across-protocol/contracts::locator=flex-pool-contracts%40workspace%3A.":
+  version: 0.0.0-use.local
+  resolution: "@across-protocol/contracts@link:./submodules/across-protocol/contracts::locator=flex-pool-contracts%40workspace%3A."
+  languageName: node
+  linkType: soft
+
 "@adraffy/ens-normalize@npm:1.10.1":
   version: 1.10.1
   resolution: "@adraffy/ens-normalize@npm:1.10.1"
@@ -2575,6 +2581,7 @@ __metadata:
     "@1inch/cross-chain-swap": "link:./submodules/1inch/cross-chain-swap"
     "@1inch/limit-order-protocol": "link:./submodules/1inch/cross-chain-swap/lib/limit-order-protocol"
     "@1inch/solidity-utils": "link:./submodules/1inch/cross-chain-swap/lib/solidity-utils"
+    "@across-protocol/contracts": "link:./submodules/across-protocol/contracts"
     "@nomicfoundation/hardhat-ignition": "npm:0.15.11"
     "@nomicfoundation/hardhat-ignition-viem": "npm:0.15.11"
     "@nomicfoundation/hardhat-network-helpers": "npm:1.0.12"

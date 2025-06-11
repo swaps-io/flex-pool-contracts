@@ -2,3 +2,6 @@
 	path = submodules/1inch/cross-chain-swap
 	url = https://github.com/1inch/cross-chain-swap
 	ignore = dirty
+[submodule "submodules/across-protocol/contracts"]
+	path = submodules/across-protocol/contracts
+	url = https://github.com/across-protocol/contracts

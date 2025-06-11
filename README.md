@@ -26,6 +26,7 @@ Smart contracts of Flex Pool protocol.
   - [Taker](#taker)
     - [Transfer](#transfer)
     - [1inch Fusion+](#1inch-fusion)
+    - [Across](#across)
   - [Verifier](#verifier)
 - [Development](#development)
   - [Stack](#stack)
@@ -776,6 +777,10 @@ transferred to the pool (transiting though `FusionGiver` contract if it's a _pub
 the maker. On destination chain, cancellation returns asset back to pool (possibly though `FusionTaker`), on success -
 to a specified receiver.
 
+#### Across
+
+TODO
+
 ### Verifier
 
 Verifier contract is part of external [Flex Proof](https://github.com/swaps-io/flex-proof-contracts) system. It allows
@@ -815,6 +820,7 @@ implementations to ensure [take](#take) operation soundness. Single `validateEve
 |------|---------|-----------|-------|---------|
 | [`@openzeppelin/contracts`](https://github.com/OpenZeppelin/openzeppelin-contracts/tree/e4f70216d759d8e6a64144a9e1f7bbeed78e7079) | `5.3.0` | [NPM package](https://www.npmjs.com/package/@openzeppelin/contracts/v/5.3.0) | Global | Common utilities |
 | [`@1inch/cross-chain-swap`](https://github.com/1inch/cross-chain-swap/tree/ac885535b572e85526bae10485ca64b449005ee2) | `1.0.0` | [Submodule](submodules/1inch/cross-chain-swap) | [`taker/fusion`](contracts/taker/fusion) | [1inch Fusion+ taker provider](#1inch-fusion) |
+| [`@across-protocol/contracts`](https://github.com/across-protocol/contracts/tree/94c9692b8bae43aa9c35313b25579764a8e6d0c0) | `4.0.12` | [Submodule](submodules/across-protocol/contracts) | [`taker/across`](contracts/taker/across) | [Across taker provider](#across) |
 
 ### Setup
 

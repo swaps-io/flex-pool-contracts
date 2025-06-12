@@ -734,7 +734,7 @@ the list of other functions exposed by the taker contract, depend on specifics o
 
 #### Transfer
 
-[`TransferTaker`](contracts/taker/transfer/TransferTaker.sol) implementation of [taker](#taker) provides ability to
+[`TransferTaker`](contracts/taker/transfer/TransferTaker.sol) implementation of [taker](#taker) provides an ability to
 [take](#take) available [asset](#asset) from pool _after_ [giving](#give) asset on another chains though. The give
 operation is performed via [`TransferGiver`](contracts/taker/transfer/TransferGiver.sol) contract, that emits
 `TransferGive` event that is verified by the taker.
@@ -750,7 +750,7 @@ operation is performed via [`TransferGiver`](contracts/taker/transfer/TransferGi
 
 #### 1inch Fusion+
 
-[`FusionTaker`](contracts/taker/fusion/FusionTaker.sol) implementation of [taker](#taker) provides ability to
+[`FusionTaker`](contracts/taker/fusion/FusionTaker.sol) implementation of [taker](#taker) provides an ability to
 [take](#take) asset using [1inch Fusion+](https://portal.1inch.dev/documentation/apis/swap/fusion-plus/introduction)
 protocol.
 
@@ -772,7 +772,27 @@ to a specified receiver.
 
 #### Across
 
-TODO
+[`AcrossTaker`](contracts/taker/across/AcrossTaker.sol) implementation of [taker](#taker) provides an ability to
+[take](#take) asset using [Across protocol](https://docs.across.to/introduction/what-is-across). The taker contract
+expects input and output tokens to _match_ tokens managed by [enclave](#infrastructure)'s pools in corresponding chains.
+
+First, Across _deposit_ must be committed on the origin chain. This action emits `FundsDeposited` event, the proof of
+which is expected on the take chain (`depositProof`). Along with the proof, the `takeToFillRelay` function accepts a
+number of parameters to reconstruct the original event for verification.
+
+> [!NOTE]
+>
+> Number of `assets` for `take` is allowed to be different from `outputAssets` due to [rebalance](#rebalance) logic and
+> strict validation of the original event components. The take sufficiency will be validated still and any surplus
+> assets of the operation will be returned to the taker caller.
+
+Once event and parameters are verified, `SpokePool`'s `fillRelay` function is called. The taker contract provides the
+asset for the fill as `msg.sender`, specifying the _repayment_ chain to be the origin `giveChain` chain and the
+_receiver_ account to be `givePool`, thus ensuring `givePoolAsset` token will be returned to the enclave eventually.
+
+> [!NOTE]
+>
+> If any of `take`, verification, or `fillRelay` phases fails, entire `takeToFillRelay` call fails.
 
 ### Verifier
 

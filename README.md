@@ -406,9 +406,9 @@ The withdraw asset _clamp_ to the available amount can be previewed with the `cl
 >
 > - Params:
 >   - `assets` (`uint256`) - amount of assets to take from pool
->   - `taker` (`address`) - [taker](#taker) contract address
->   - `takerData` (`bytes`) - data to pass to the taker contract
->   - `tunerData` (`bytes`) - data to pass to [tuner](#tuner) assigned to the taker
+>
+> - Returns:
+>   - `minGiveAssets` (`uint256`) - minimal amount of asset should be given back to pool enclave
 >
 > - Events:
 >   - `Take`
@@ -419,10 +419,11 @@ The withdraw asset _clamp_ to the available amount can be previewed with the `cl
 >
 > ---
 
-The `take` function is the main point of obtaining the pool [asset](#asset) for solvers. When called, it first validates
-the requested [`taker`](#taker) contract to be whitelisted and extracts [`tuner`](#tuner) assigned to it. The tuner
-calculates how much the solver should [give](#give) assets back to pool for the requested `assets` to take. The result
-is always at least `assets` + `protocolAssets`, plus additional `rebalanceAssets` if it's _positive_.
+The `take` function is the main point of providing the pool [asset](#asset) to solvers. The function is designed to
+be called by a whitelisted [`taker`](#taker) contract that includes provider-specific validation. The taker-assigned
+[`tuner`](#tuner) calculates components of `minGiveAssets` - how much assets the solver should [give](#give) back to
+the pool enclave for the requested `assets` to take. The result is always at least `assets` + `protocolAssets`, plus
+additional `rebalanceAssets` if the value is _positive_.
 
 The `protocolAssets` value is added to [total](#total-assets) assets managed by the pool. In other words, this is a
 commission that the solver pays to liquidity providers for the usage. The underlying ERC-4626 mechanism
@@ -438,10 +439,10 @@ rebalance payment is transferred as _surplus_ to the `taker` contract along with
 > Check out [rebalance](#rebalance) section for info on how tuner's `rebalanceAssets` should be taken into account when
 > checking pool asset availability for a `take`.
 
-The `taker` ensures that the total amount of the received assets is sufficient to guarantee at least _give_ assets for
-the pool on a target chain. The details of this security validation logic depend on implementation of a specific taker
-[provider](#transfer). After validation, and, usually, transfer of _minimal_ needed asset to underlying protocol, a
-take provider transfers unspent assets surplus to the take solver.
+The `taker` ensures that the total amount of the received assets is sufficient to guarantee at least _min give assets_
+for the enclave on another chain. The details of this security validation logic depend on implementation of a specific
+taker [provider](#transfer). After validation, and, usually, transfer of _minimal_ needed asset to underlying protocol,
+a take provider transfers unspent assets surplus to the take solver.
 
 #### Give
 
@@ -666,7 +667,6 @@ interface that includes single `tune` view function.
 >
 > - Params:
 >   - `assets` (`uint256`) - amount of assets to take
->   - `data` (`bytes`) - extra data that may be used by an implementation
 >
 > - Returns:
 >   - `protocolAssets` (`uint256`) - amount of extra assets solver should return in favor of liquidity providers
@@ -713,31 +713,24 @@ above-zero equilibrium, the tuner subtracts amount from `rebalanceAssets` propor
 
 ### Taker
 
-Taker is a contract that receives the [take](#take) asset in amount of `assets` + `surplusAssets` from pool and handles
-it according to the underlying provider's logic. Along with the asset, the [tuned](#tuner) amounts and other data are
-passed for taker to ensure that the provider can guarantee the minimal amount of asset back during [give](#give)
-operation on another chain. Taker must implement [`ITuner`](contracts/taker/interfaces/ITaker.sol) interface with one
-`take` function.
-
-> ---
->
-> - Function: __`take`__ of [`ITaker`](contracts/taker/interfaces/ITaker.sol)
->
-> - Params:
->   - `caller` (`address`) - address of pool's `take` original caller
->   - `assets` (`uint256`) - amount of assets to take
->   - `surplusAssets` (`uint256`) - extra assets besides the `assets` provided for taker
->   - `giveAssets` (`uint256`) - amount of assets to take
->   - `data` (`bytes`) - extra data that may be used by an implementation
->
-> ---
+Taker contracts are meant to be used by solvers for taking pool liquidity using specific underlying provider's logic.
+A taker contract calls [take](#take) function of pool to receive its [asset](#asset). It will receive _at least_
+the requested `assets` after the successful call - but the balance gain _can be more_ if this is a
+[rebalance](#rebalance)-favorable action. Taker must handle the asset according to the underlying provider's logic and
+ensure that the provider can guarantee the minimal amount of asset back to the pool enclave during [give](#give)
+operation - usually on another chain.
 
 > [!IMPORTANT]
 >
 > Taker implementation must:
-> - verify that the `take` call is _only from_ trusted `pool` contract address
-> - _guarantee_ that `giveAssets` will be (or already) provided back to the pool [enclave](#infrastructure)
-> - _return unused_ part of `assets` + `surplusAssets` to `caller` (or agreed address extracted from `data`)
+> - _call `take`_ of trusted (generally _immutable_) `pool` contract address
+> - _guarantee_ that `minGiveAssets` will be (or already) provided back to the pool [enclave](#infrastructure)
+> - _provide protection_ against pool asset double-spending and call reentrancy attacks
+> - _return unused_ part of received assets to its _caller_ (or agreed address from function data)
+
+Taker implementation is not bound to any specific interface. However, it's common that the function name starts with
+`take` prefix and at least accepts `assets` value to pass to the pool. The rest of the function parameters, as well as
+the list of other functions exposed by the taker contract, depend on specifics of the underlying provider.
 
 #### Transfer
 

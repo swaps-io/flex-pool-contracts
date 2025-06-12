@@ -75,15 +75,15 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
         require(commonAssets >= commonMinAssets, InsufficientGiveAssets(commonAssets, commonMinAssets));
     }
 
-    function _transitToTaken(address receiver_, uint256 nonce_) private {
-        require(!taken(receiver_, nonce_), AlreadyTaken(receiver_, nonce_));
-        BitMaps.set(_takenData[receiver_], nonce_);
-    }
-
     function _verifyGiveEvent(uint256 assets_, address receiver_, uint256 nonce_, bytes memory proof_) private {
         bytes32[] memory topics = new bytes32[](1);
         topics[0] = ITransferGiver.TransferGive.selector;
         bytes memory data = abi.encode(assets_, block.chainid, receiver_, nonce_);
         verifier.verifyEvent(giveChain, giveTransferGiver, topics, data, proof_);
+    }
+
+    function _transitToTaken(address receiver_, uint256 nonce_) private {
+        require(!taken(receiver_, nonce_), AlreadyTaken(receiver_, nonce_));
+        BitMaps.set(_takenData[receiver_], nonce_);
     }
 }

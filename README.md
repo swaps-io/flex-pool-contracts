@@ -27,6 +27,8 @@ Smart contracts of Flex Pool protocol.
     - [Transfer](#transfer)
     - [1inch Fusion+](#1inch-fusion)
     - [Across](#across)
+      - [Across Fill](#across-fill)
+      - [Across Deposit](#across-deposit)
   - [Verifier](#verifier)
 - [Development](#development)
   - [Stack](#stack)
@@ -772,9 +774,18 @@ to a specified receiver.
 
 #### Across
 
-[`AcrossTaker`](contracts/taker/across/AcrossTaker.sol) implementation of [taker](#taker) provides an ability to
-[take](#take) asset using [Across protocol](https://docs.across.to/introduction/what-is-across). The taker contract
-expects input and output tokens to _match_ tokens managed by [enclave](#infrastructure)'s pools in corresponding chains.
+Takers based on [Across protocol](https://docs.across.to/introduction/what-is-across). Two primary flows are supported:
+- [_fill_](#across-fill) - take pool asset for filling an already deposited order on another chain in exchange for
+  repayment to the origin's pool of the same enclave
+- [_deposit_](#across-deposit) - take pool asset and immediately deposit it expecting the order to be filled on another
+  chain with the same enclave's pool as recipient
+
+##### Across Fill
+
+[`AcrossFillTaker`](contracts/taker/across/AcrossFillTaker.sol) implementation of [taker](#taker) provides an ability to
+[take](#take) pool asset for filling an already deposited order on another chain in exchange for repayment to the
+origin's pool of the same [enclave](#infrastructure). The taker contract expects input and output tokens to _match_
+tokens managed by pools in corresponding chains.
 
 First, Across _deposit_ must be committed on the origin chain. This action emits `FundsDeposited` event, the proof of
 which is expected on the take chain (`depositProof`). Along with the proof, the `takeToFillRelay` function accepts a
@@ -793,6 +804,21 @@ _receiver_ account to be `givePool`, thus ensuring `givePoolAsset` token will be
 > [!NOTE]
 >
 > If any of `take`, verification, or `fillRelay` phases fails, entire `takeToFillRelay` call fails.
+
+##### Across Deposit
+
+[`AcrossDepositTaker`](contracts/taker/across/AcrossDepositTaker.sol) implementation of [taker](#taker) provides an
+ability to [take](#take) pool asset and immediately deposit it expecting the order to be filled on another chain with
+the same enclave's pool as recipient. The order created has input and output tokens _matching_ the tokens managed by
+the pools in corresponding chains.
+
+As the first step, a solver should call `takeToDeposit` function of the taker. The taker will receive at least `assets`
+from the pool, which is with the optional [surplus](#rebalance) should be sufficient to cover `inputAmount` (the rest
+is returned to the caller). The `outputAmount` value should cover pool-requested `minGiveAssets`.
+
+Once deposit is successfully created, the solver should obtain `FundsDeposited` event details and fill the order
+on the target chain (`giveChain`) using `SpokePool`'s `fillRelay` function. If this part is failed (deadline exceeded),
+funds are returned to the pool on the origin chain by Across protocol - as specified in the on-chain formed order.
 
 ### Verifier
 

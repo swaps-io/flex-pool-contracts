@@ -29,6 +29,7 @@ Smart contracts of Flex Pool protocol.
     - [Across](#across)
       - [Across Fill](#across-fill)
       - [Across Deposit](#across-deposit)
+    - [CCTP](#cctp)
   - [Verifier](#verifier)
 - [Development](#development)
   - [Stack](#stack)
@@ -819,6 +820,18 @@ is returned to the caller). The `outputAmount` value should cover pool-requested
 Once deposit is successfully created, the solver should obtain `FundsDeposited` event details and fill the order
 on the target chain (`giveChain`) using `SpokePool`'s `fillRelay` function. If this part is failed (deadline exceeded),
 funds are returned to the pool on the origin chain by Across protocol - as specified in the on-chain formed order.
+
+#### CCTP
+
+[`CctpTaker`](contracts/taker/cctp/CctpTaker.sol) implementation of [taker](#taker) provides an ability to [take](#take)
+pool asset and _burn_ it using Circle's [CCTP protocol](https://developers.circle.com/stablecoins/cctp-getting-started).
+The burned asset then can be _minted_ on destination chain using the protocol. The minted asset (except the protocol
+fee) is automatically directed to the destination chain's pool (configured as recipient during the _burn_ phase).
+
+> [!NOTE]
+>
+> The solver who bridges the asset using CCTP taker benefits from the _surplus_ asset, provided by pool to the taker
+> contract and unspent during _burn_. This surplus is part of the pool's [rebalance](#rebalance) logic.
 
 ### Verifier
 

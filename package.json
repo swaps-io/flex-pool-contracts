@@ -32,13 +32,13 @@
     "@types/chai-as-promised": "7.1.8",
     "@types/mocha": "10.0.10",
     "chai": "4.5.0",
-    "hardhat": "2.24.2",
+    "hardhat": "2.24.3",
     "hardhat-contract-sizer": "2.10.0",
     "hardhat-gas-reporter": "2.3.0",
     "solhint": "5.1.0",
     "solidity-coverage": "0.8.16",
     "ts-node": "10.9.2",
     "typescript": "5.8.3",
-    "viem": "2.31.0"
+    "viem": "2.31.2"
   }
 }

@@ -11,9 +11,9 @@ import {Controllable} from "../../control/Controllable.sol";
 import {TrackAsset} from "../../util/track/TrackAsset.sol";
 import {DecimalsLib} from "../../util/libraries/DecimalsLib.sol";
 
-import {IAcrossBaseTaker, V3SpokePoolInterface} from "./interfaces/IAcrossBaseTaker.sol";
+import {IAcrossTakerBase, V3SpokePoolInterface} from "./interfaces/IAcrossTakerBase.sol";
 
-abstract contract AcrossBaseTaker is IAcrossBaseTaker, PoolAware, AssetRescuer, Controllable, TrackAsset {
+abstract contract AcrossTakerBase is IAcrossTakerBase, PoolAware, AssetRescuer, Controllable, TrackAsset {
     V3SpokePoolInterface public immutable spokePool;
     uint256 public immutable override giveChain;
     address public immutable override givePool;

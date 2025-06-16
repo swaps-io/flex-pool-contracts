@@ -4,9 +4,9 @@ pragma solidity ^0.8.26;
 
 import {IAcrossDepositTaker} from "./interfaces/IAcrossDepositTaker.sol";
 
-import {AcrossBaseTaker, IFlexPool, V3SpokePoolInterface} from "./AcrossBaseTaker.sol";
+import {AcrossTakerBase, IFlexPool, V3SpokePoolInterface} from "./AcrossTakerBase.sol";
 
-contract AcrossDepositTaker is IAcrossDepositTaker, AcrossBaseTaker {
+contract AcrossDepositTaker is IAcrossDepositTaker, AcrossTakerBase {
     uint32 private constant FILL_TIME_TOTAL = 10 minutes;
     uint32 private constant FILL_TIME_EXCLUSIVE = 1 minutes;
 
@@ -19,7 +19,7 @@ contract AcrossDepositTaker is IAcrossDepositTaker, AcrossBaseTaker {
         address givePoolAsset_,
         int256 giveDecimalsShift_
     )
-        AcrossBaseTaker(
+        AcrossTakerBase(
             pool_,
             controller_,
             spokePool_,

@@ -4,9 +4,9 @@ pragma solidity ^0.8.26;
 
 import {IVerifierAware} from "../../../verifier/aware/interfaces/IVerifierAware.sol";
 
-import {IAcrossBaseTaker} from "./IAcrossBaseTaker.sol";
+import {IAcrossTakerBase} from "./IAcrossTakerBase.sol";
 
-interface IAcrossFillTaker is IAcrossBaseTaker, IVerifierAware {
+interface IAcrossFillTaker is IAcrossTakerBase, IVerifierAware {
     function giveSpokePool() external view returns (address);
 
     function takeToFillRelay(

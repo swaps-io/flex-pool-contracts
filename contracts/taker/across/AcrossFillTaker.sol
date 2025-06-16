@@ -6,9 +6,9 @@ import {VerifierAware, IEventVerifier} from "../../verifier/aware/VerifierAware.
 
 import {IAcrossFillTaker} from "./interfaces/IAcrossFillTaker.sol";
 
-import {AcrossBaseTaker, IFlexPool, V3SpokePoolInterface} from "./AcrossBaseTaker.sol";
+import {AcrossTakerBase, IFlexPool, V3SpokePoolInterface} from "./AcrossTakerBase.sol";
 
-contract AcrossFillTaker is IAcrossFillTaker, AcrossBaseTaker, VerifierAware {
+contract AcrossFillTaker is IAcrossFillTaker, AcrossTakerBase, VerifierAware {
     address public immutable override giveSpokePool;
 
     constructor(
@@ -22,7 +22,7 @@ contract AcrossFillTaker is IAcrossFillTaker, AcrossBaseTaker, VerifierAware {
         address giveSpokePool_,
         int256 giveDecimalsShift_
     )
-        AcrossBaseTaker(
+        AcrossTakerBase(
             pool_,
             controller_,
             spokePool_,

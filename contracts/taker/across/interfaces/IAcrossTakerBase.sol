@@ -10,7 +10,7 @@ import {IAssetRescuer} from "../../../rescue/interfaces/IAssetRescuer.sol";
 
 import {IControllable} from "../../../control/interfaces/IControllable.sol";
 
-interface IAcrossBaseTaker is IPoolAware, IAssetRescuer, IControllable {
+interface IAcrossTakerBase is IPoolAware, IAssetRescuer, IControllable {
     error InsufficientTakeAssets(uint256 assets, uint256 minAssets);
     error InsufficientGiveAssets(uint256 assets, uint256 minAssets);
 

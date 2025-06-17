@@ -17,7 +17,7 @@ describe('Native', function () {
     };
   }
 
-  it('Should do stuff', async function () {
+  it('Should test native', async function () {
     const { publicClient, walletClient, test } = await loadFixture(deployFixture);
 
     await walletClient.sendTransaction({

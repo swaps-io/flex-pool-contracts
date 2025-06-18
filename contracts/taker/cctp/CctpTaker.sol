@@ -43,6 +43,7 @@ contract CctpTaker is ICctpTaker, PoolAware, AssetRescuer, Controllable, TrackTo
         uint256 baseAssets = _trackTokenBefore(poolAsset);
         uint256 minGiveAssets = pool.take(assets_);
         uint256 takeAssets = _trackTokenBefore(poolAsset) - baseAssets;
+
         _verifyTakeAssets(takeAssets, cctpAmount_);
         _verifyGiveAssets(cctpAmount_ - cctpMaxFee_, minGiveAssets);
 

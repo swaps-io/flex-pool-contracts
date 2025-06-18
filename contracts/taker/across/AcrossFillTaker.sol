@@ -47,12 +47,10 @@ contract AcrossFillTaker is IAcrossFillTaker, AcrossTakerBase, VerifierAware {
         bytes32 exclusiveRelayer_,
         bytes calldata message_,
         bytes calldata depositProof_
-    ) public override {
-        uint256 baseAssets = _trackTokenBefore(poolAsset);
-        uint256 minGiveAssets = pool.take(assets_);
-        uint256 takeAssets = _trackTokenBefore(poolAsset) - baseAssets;
-        _verifyTakeAssets(takeAssets, outputAmount_);
+    ) public override trackToken(poolAsset) {
+        (uint256 takeAssets, uint256 minGiveAssets) = pool.take(assets_);
 
+        _verifyTakeAssets(takeAssets, outputAmount_);
         _verifyGiveAssets(inputAmount_, minGiveAssets);
         _verifyGiveEvent(
             inputAmount_,
@@ -79,7 +77,6 @@ contract AcrossFillTaker is IAcrossFillTaker, AcrossTakerBase, VerifierAware {
             exclusiveRelayer_,
             message_
         );
-        _trackTokenAfter(poolAsset, baseAssets);
     }
 
     // ---

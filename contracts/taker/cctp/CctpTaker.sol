@@ -37,18 +37,19 @@ contract CctpTaker is ICctpTaker, PoolAware, AssetRescuer, Controllable, TrackTo
         poolAsset.approve(address(tokenMessenger_), type(uint256).max);
     }
 
-    function takeToBurn(uint256 assets_, uint256 cctpAmount_, uint256 cctpMaxFee_) public override {
+    function takeToBurn(
+        uint256 assets_,
+        uint256 cctpAmount_,
+        uint256 cctpMaxFee_
+    ) public override trackToken(poolAsset) {
         _verifyCctpFee(cctpAmount_, cctpMaxFee_);
 
-        uint256 baseAssets = _trackTokenBefore(poolAsset);
-        uint256 minGiveAssets = pool.take(assets_);
-        uint256 takeAssets = _trackTokenBefore(poolAsset) - baseAssets;
+        (uint256 takeAssets, uint256 minGiveAssets) = pool.take(assets_);
 
         _verifyTakeAssets(takeAssets, cctpAmount_);
         _verifyGiveAssets(cctpAmount_ - cctpMaxFee_, minGiveAssets);
 
         _burn(cctpAmount_, cctpMaxFee_);
-        _trackTokenAfter(poolAsset, baseAssets);
     }
 
     // ---

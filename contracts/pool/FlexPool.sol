@@ -78,7 +78,7 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
 
     // Write
 
-    function take(uint256 assets_) public override returns (uint256 minGiveAssets) {
+    function take(uint256 assets_) public override returns (uint256 takeAssets, uint256 minGiveAssets) {
         address tuner_ = tuner[_msgSender()];
         require(tuner_ != address(0), NoTuner(_msgSender()));
 
@@ -90,16 +90,16 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
             _totalAssets += protocolAssets;
         }
 
-        uint256 takerAssets = assets_;
+        takeAssets = assets_;
         if (rebalanceAssets_ > 0) {
             minGiveAssets += uint256(rebalanceAssets_);
             rebalanceAssets += uint256(rebalanceAssets_);
         } else {
-            takerAssets += uint256(-rebalanceAssets_);
+            takeAssets += uint256(-rebalanceAssets_);
             rebalanceAssets -= uint256(-rebalanceAssets_);
         }
 
-        SafeERC20.safeTransfer(IERC20(asset()), _msgSender(), takerAssets);
+        SafeERC20.safeTransfer(IERC20(asset()), _msgSender(), takeAssets);
         _verifyAssets();
         emit Take(_msgSender(), assets_, protocolAssets, rebalanceAssets_);
     }

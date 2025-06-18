@@ -3,6 +3,7 @@
 pragma solidity ^0.8.26;
 
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {PoolAware, IFlexPool} from "../../pool/aware/PoolAware.sol";
 
@@ -13,12 +14,11 @@ import {AssetRescuer} from "../../rescue/AssetRescuer.sol";
 import {Controllable} from "../../control/Controllable.sol";
 
 import {DecimalsLib} from "../../util/libraries/DecimalsLib.sol";
-import {TrackToken} from "../../util/track/TrackToken.sol";
 
 import {ITransferTaker} from "./interfaces/ITransferTaker.sol";
 import {ITransferGiver} from "./interfaces/ITransferGiver.sol";
 
-contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer, Controllable, TrackToken {
+contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer, Controllable {
     uint256 public immutable override giveChain;
     address public immutable override giveTransferGiver;
     int256 public immutable override giveDecimalsShift;
@@ -51,11 +51,12 @@ contract TransferTaker is ITransferTaker, PoolAware, VerifierAware, AssetRescuer
         uint256 nonce_,
         uint256 giveAssets_,
         bytes calldata giveProof_
-    ) external override trackToken(poolAsset) {
-        uint256 minGiveAssets = pool.take(assets_);
+    ) external override {
+        (uint256 takeAssets, uint256 minGiveAssets) = pool.take(assets_);
         _verifyGiveAssets(minGiveAssets, giveAssets_);
         _verifyGiveEvent(giveAssets_, msg.sender, nonce_, giveProof_);
         _transitToTaken(msg.sender, nonce_);
+        SafeERC20.safeTransfer(poolAsset, msg.sender, takeAssets);
     }
 
     // ---

@@ -35,15 +35,13 @@ contract AcrossDepositTaker is IAcrossDepositTaker, AcrossTakerBase {
         uint256 inputAmount_,
         uint256 outputAmount_,
         bytes32 exclusiveRelayer_
-    ) public override {
-        uint256 baseAssets = _trackTokenBefore(poolAsset);
-        uint256 minGiveAssets = pool.take(assets_);
-        uint256 takeAssets = _trackTokenBefore(poolAsset) - baseAssets;
+    ) public override trackToken(poolAsset) {
+        (uint256 takeAssets, uint256 minGiveAssets) = pool.take(assets_);
+
         _verifyTakeAssets(takeAssets, inputAmount_);
         _verifyGiveAssets(outputAmount_, minGiveAssets);
 
         _deposit(inputAmount_, outputAmount_, exclusiveRelayer_);
-        _trackTokenAfter(poolAsset, baseAssets);
     }
 
     // ---

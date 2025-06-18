@@ -411,6 +411,7 @@ The withdraw asset _clamp_ to the available amount can be previewed with the `cl
 >   - `assets` (`uint256`) - amount of assets to take from pool
 >
 > - Returns:
+>   - `takeAssets` (`uint256`) - amount of asset received by taker (i.e. _balance after_ - _balance before_)
 >   - `minGiveAssets` (`uint256`) - minimal amount of asset should be given back to pool enclave
 >
 > - Events:
@@ -426,7 +427,9 @@ The `take` function is the main point of providing the pool [asset](#asset) to s
 be called by a whitelisted [`taker`](#taker) contract that includes provider-specific validation. The taker-assigned
 [`tuner`](#tuner) calculates components of `minGiveAssets` - how much assets the solver should [give](#give) back to
 the pool enclave for the requested `assets` to take. The result is always at least `assets` + `protocolAssets`, plus
-additional `rebalanceAssets` if the value is _positive_.
+additional `rebalanceAssets` if the value is _positive_. The `takeAssets` value represents actual amount of asset
+sent to the taker, which is at least `assets`, plus additional `rebalanceAssets` if the value is _negative_ (the sign
+is omitted during the calculation).
 
 The `protocolAssets` value is added to [total](#total-assets) assets managed by the pool. In other words, this is a
 commission that the solver pays to liquidity providers for the usage. The underlying ERC-4626 mechanism
@@ -442,10 +445,10 @@ rebalance payment is transferred as _surplus_ to the `taker` contract along with
 > Check out [rebalance](#rebalance) section for info on how tuner's `rebalanceAssets` should be taken into account when
 > checking pool asset availability for a `take`.
 
-The `taker` ensures that the total amount of the received assets is sufficient to guarantee at least _min give assets_
-for the enclave on another chain. The details of this security validation logic depend on implementation of a specific
-taker [provider](#transfer). After validation, and, usually, transfer of _minimal_ needed asset to underlying protocol,
-a take provider transfers unspent assets surplus to the take solver.
+The `taker` ensures that the total amount of the received _take assets_ is sufficient to guarantee at least
+_min give assets_ for the enclave on another chain. The details of this security validation logic depend on
+implementation of a specific taker [provider](#transfer). After validation, and, usually, transfer of _minimal_
+needed asset to underlying protocol, a take provider transfers unspent assets surplus to the take solver.
 
 #### Give
 

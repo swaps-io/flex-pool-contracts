@@ -54,12 +54,10 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
         trackNative
         trackToken(poolAsset)
     {
-        uint256 balanceBefore = poolAsset.balanceOf(address(this));
-        uint256 minGiveAssets = pool.take(assets_);
-        uint256 takerAssets = poolAsset.balanceOf(address(this)) - balanceBefore;
+        (uint256 takeAssets, uint256 minGiveAssets) = pool.take(assets_);
 
         _verifySrcImmutables(srcImmutables_, minGiveAssets);
-        _verifyDstImmutablesComplement(dstImmutablesComplement_, takerAssets);
+        _verifyDstImmutablesComplement(dstImmutablesComplement_, takeAssets);
         _verifyGiveEvent(srcImmutables_, dstImmutablesComplement_, srcEscrowCreatedProof_);
 
         IBaseEscrow.Immutables memory immutables = _composeDstImmutables(

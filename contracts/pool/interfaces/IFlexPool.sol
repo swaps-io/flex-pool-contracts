@@ -44,7 +44,7 @@ interface IFlexPool is IERC4626, IERC20Permit, IAssetPermitter, IAssetRescuer, I
 
     // Write
 
-    function take(uint256 assets) external returns (uint256 minGiveAssets);
+    function take(uint256 assets) external returns (uint256 takeAssets, uint256 minGiveAssets);
 
     function withdrawAvailable(uint256 assets, address receiver, address owner) external returns (uint256);
 

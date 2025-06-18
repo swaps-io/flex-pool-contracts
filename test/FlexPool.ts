@@ -207,6 +207,7 @@ describe('FlexPool', function () {
     const assets = 133_701_337n;
     const protocolAssets = 3_302n;
     const rebalanceAssets = 137_137n;
+    const takeAssets = assets;
     const minGiveAssets = assets + protocolAssets + rebalanceAssets;
 
     await ownerClient.writeContract({
@@ -268,6 +269,7 @@ describe('FlexPool', function () {
       args: [
         id, // id
         assets, // assets
+        takeAssets, // expectedTakeAssets
         minGiveAssets // expectedMinGiveAssets
       ],
     });
@@ -802,6 +804,7 @@ describe('FlexPool', function () {
     const assets = 133_701_337n;
     const protocolAssets = 3_302n;
     const rebalanceAssets = 137_137n;
+    const takeAssets = assets;
     const minGiveAssets = assets + protocolAssets + rebalanceAssets;
 
     await ownerClient.writeContract({
@@ -880,6 +883,7 @@ describe('FlexPool', function () {
       args: [
         id, // id
         assets, // assets
+        takeAssets, // expectedTakeAssets
         minGiveAssets, // expectedMinGiveAssets
       ],
     });
@@ -987,6 +991,7 @@ describe('FlexPool', function () {
     const assets = 133_701_337n;
     const protocolAssets = 3_302n;
     const rebalanceAssets = 137_137n;
+    const takeAssets = assets;
     const minGiveAssets = assets + protocolAssets + rebalanceAssets;
 
     await ownerClient.writeContract({
@@ -1059,6 +1064,7 @@ describe('FlexPool', function () {
       args: [
         firstId, // id
         assets, // assets
+        takeAssets, // expectedTakeAssets
         minGiveAssets, // expectedMinGiveAssets
       ],
     });
@@ -1078,6 +1084,7 @@ describe('FlexPool', function () {
       args: [
         id, // id
         assets, // assets
+        takeAssets, // expectedTakeAssets
         minGiveAssets, // expectedMinGiveAssets
       ],
     });
@@ -1186,6 +1193,8 @@ describe('FlexPool', function () {
     const protocolAssets = 3_302n;
     const firstRebalanceAssets = 137_137n;
     const rebalanceAssets = -13_337n;
+    const firstTakeAssets = assets;
+    const takeAssets = assets - rebalanceAssets;
     const firstMinGiveAssets = assets + protocolAssets + firstRebalanceAssets;
     const minGiveAssets = assets + protocolAssets;
 
@@ -1259,6 +1268,7 @@ describe('FlexPool', function () {
       args: [
         firstId, // id
         assets, // assets
+        firstTakeAssets, // expectedTakeAssets
         firstMinGiveAssets, // expectedMinGiveAssets
       ],
     });
@@ -1287,6 +1297,7 @@ describe('FlexPool', function () {
       args: [
         id, // id
         assets, // assets
+        takeAssets, // expectedTakeAssets
         minGiveAssets, // expectedMinGiveAssets
       ],
     });
@@ -1395,6 +1406,8 @@ describe('FlexPool', function () {
     const protocolAssets = 3_302n;
     const firstRebalanceAssets = 137_137n;
     const rebalanceAssets = -13_337n;
+    const firstTakeAssets = assets;
+    const takeAssets = assets - rebalanceAssets;
     const firstMinGiveAssets = assets + protocolAssets + firstRebalanceAssets;
     const minGiveAssets = assets + protocolAssets;
 
@@ -1468,6 +1481,7 @@ describe('FlexPool', function () {
       args: [
         firstId, // id
         assets, // assets
+        firstTakeAssets, // expectedTakeAssets
         firstMinGiveAssets, // expectedMinGiveAssets
       ],
     });
@@ -1489,6 +1503,7 @@ describe('FlexPool', function () {
       args: [
         id, // id
         assets, // assets
+        takeAssets, // expectedTakeAssets
         minGiveAssets, // expectedMinGiveAssets
       ],
     });
@@ -1573,6 +1588,7 @@ describe('FlexPool', function () {
     const assets = 133_701_337n;
     const protocolAssets = 3_302n;
     const rebalanceAssets = 137_137n;
+    const takeAssets = assets;
     const minGiveAssets = assets + protocolAssets + rebalanceAssets;
 
     await ownerClient.writeContract({
@@ -1644,6 +1660,7 @@ describe('FlexPool', function () {
       args: [
         id, // id
         assets, // assets
+        takeAssets, // expectedTakeAssets
         minGiveAssets, // expectedMinGiveAssets
       ],
     });

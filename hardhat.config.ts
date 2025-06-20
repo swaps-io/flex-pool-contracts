@@ -3,16 +3,12 @@ import { SolcUserConfig } from 'hardhat/types';
 import '@nomicfoundation/hardhat-toolbox-viem';
 import 'hardhat-contract-sizer';
 
-type SolcOverrides = {
-  evmVersion?: string;
-}
-
-const solc = (overrides: SolcOverrides = {}): SolcUserConfig => {
+const solc = (): SolcUserConfig => {
   return {
     version: '0.8.28',
     settings: {
       viaIR: true,
-      evmVersion: overrides.evmVersion ?? 'paris',
+      evmVersion: process.env.EVM_VERSION ?? 'cancun', // `EVM_VERSION=paris yarn build`
       optimizer: {
         enabled: true,
         runs: 1_000_000,

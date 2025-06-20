@@ -1,7 +1,7 @@
 import { loadFixture, } from '@nomicfoundation/hardhat-toolbox-viem/network-helpers';
 import hre from 'hardhat';
 import { expect } from 'chai';
-import { checksumAddress, encodeAbiParameters, parseAbiParameters, parseEventLogs, zeroAddress } from 'viem';
+import { checksumAddress, parseEventLogs, zeroAddress } from 'viem';
 
 describe('FlexPool', function () {
   async function deployFixture() {

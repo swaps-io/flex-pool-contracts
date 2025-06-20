@@ -5,7 +5,7 @@ import 'hardhat-contract-sizer';
 
 const solc = (): SolcUserConfig => {
   return {
-    version: '0.8.28',
+    version: '0.8.29',
     settings: {
       viaIR: true,
       evmVersion: process.env.EVM_VERSION ?? 'cancun', // `EVM_VERSION=paris yarn build`

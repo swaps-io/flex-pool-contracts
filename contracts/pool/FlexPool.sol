@@ -14,15 +14,11 @@ import {AssetRescuer} from "../rescue/AssetRescuer.sol";
 
 import {Controllable} from "../control/Controllable.sol";
 
-import {Guard} from "../util/guard/Guard.sol";
-
 import {ITuner} from "../tuner/interfaces/ITuner.sol";
-
-import {ITaker} from "../taker/interfaces/ITaker.sol";
 
 import {IFlexPool} from "./interfaces/IFlexPool.sol";
 
-contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescuer, Controllable, Guard, Multicall {
+contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescuer, Controllable, Multicall {
     uint8 public immutable override decimalsOffset;
 
     uint256 public override rebalanceAssets;
@@ -82,39 +78,30 @@ contract FlexPool is IFlexPool, ERC4626, ERC20Permit, AssetPermitter, AssetRescu
 
     // Write
 
-    function take(
-        uint256 assets_,
-        address taker_,
-        bytes calldata takerData_,
-        bytes calldata tunerData_
-    ) public payable override guard {
-        address tuner_ = tuner[taker_];
-        require(tuner_ != address(0), NoTuner(taker_));
+    function take(uint256 assets_) public override returns (uint256 takeAssets, uint256 minGiveAssets) {
+        address tuner_ = tuner[_msgSender()];
+        require(tuner_ != address(0), NoTuner(_msgSender()));
 
-        (uint256 protocolAssets, int256 rebalanceAssets_) = ITuner(tuner_).tune(assets_, tunerData_);
+        (uint256 protocolAssets, int256 rebalanceAssets_) = ITuner(tuner_).tune(assets_);
 
-        uint256 giveAssets = assets_;
+        minGiveAssets = assets_;
         if (protocolAssets != 0) {
-            giveAssets += protocolAssets;
+            minGiveAssets += protocolAssets;
             _totalAssets += protocolAssets;
         }
 
-        uint256 surplusAssets = 0;
-        uint256 takerAssets = assets_;
+        takeAssets = assets_;
         if (rebalanceAssets_ > 0) {
-            giveAssets += uint256(rebalanceAssets_);
+            minGiveAssets += uint256(rebalanceAssets_);
             rebalanceAssets += uint256(rebalanceAssets_);
         } else {
-            surplusAssets = uint256(-rebalanceAssets_);
-            takerAssets += surplusAssets;
-            rebalanceAssets -= surplusAssets;
+            takeAssets += uint256(-rebalanceAssets_);
+            rebalanceAssets -= uint256(-rebalanceAssets_);
         }
 
-        SafeERC20.safeTransfer(IERC20(asset()), taker_, takerAssets);
+        SafeERC20.safeTransfer(IERC20(asset()), _msgSender(), takeAssets);
         _verifyAssets();
-
-        ITaker(taker_).take{value: msg.value}(msg.sender, assets_, surplusAssets, giveAssets, takerData_);
-        emit Take(taker_, assets_, protocolAssets, rebalanceAssets_);
+        emit Take(_msgSender(), assets_, protocolAssets, rebalanceAssets_);
     }
 
     function withdrawAvailable(uint256 assets_, address receiver_, address owner_) public override returns (uint256) {

@@ -3,16 +3,12 @@ import { SolcUserConfig } from 'hardhat/types';
 import '@nomicfoundation/hardhat-toolbox-viem';
 import 'hardhat-contract-sizer';
 
-type SolcOverrides = {
-  evmVersion?: string;
-}
-
-const solc = (overrides: SolcOverrides = {}): SolcUserConfig => {
+const solc = (): SolcUserConfig => {
   return {
-    version: '0.8.28',
+    version: '0.8.29',
     settings: {
       viaIR: true,
-      evmVersion: overrides.evmVersion ?? 'paris',
+      evmVersion: process.env.EVM_VERSION ?? 'cancun', // `EVM_VERSION=paris yarn build`
       optimizer: {
         enabled: true,
         runs: 1_000_000,
@@ -24,10 +20,6 @@ const solc = (overrides: SolcOverrides = {}): SolcUserConfig => {
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [solc()],
-    overrides: {
-      'contracts/pool/FlexPoolCancun.sol': solc({ evmVersion: 'cancun' }),
-      '@openzeppelin/contracts/utils/TransientSlot.sol': solc({ evmVersion: 'cancun' }),
-    },
   },
   contractSizer: {
     alphaSort: true,
@@ -36,12 +28,15 @@ const config: HardhatUserConfig = {
     strict: true,
     only: [
       'contracts/pool/FlexPool.sol',
-      'contracts/pool/FlexPoolCancun.sol',
       'contracts/tuner/linear/LinearTuner.sol',
-      'contracts/taker/transfer/TransferGiver.sol',
-      'contracts/taker/transfer/TransferTaker.sol',
+      'contracts/taker/across/AcrossDepositTaker.sol',
+      'contracts/taker/across/AcrossFillTaker.sol',
+      'contracts/taker/cctp/CctpTaker.sol',
       'contracts/taker/fusion/FusionGiver.sol',
       'contracts/taker/fusion/FusionTaker.sol',
+      'contracts/taker/transfer/TransferGiver.sol',
+      'contracts/taker/transfer/TransferTaker.sol',
+      'contracts/control/Controller.sol',
     ],
   },
 };

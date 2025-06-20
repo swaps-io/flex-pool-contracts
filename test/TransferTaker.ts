@@ -8,19 +8,9 @@ import {
   getAbiItem,
   Hex,
   maxUint256,
-  parseAbiParameters,
   parseEventLogs,
   zeroAddress,
 } from 'viem';
-
-const TRANSFER_TAKE_DATA_ABI = parseAbiParameters([
-  'TransferTakeData',
-  'struct TransferTakeData { uint256 giveAssets; uint256 takeNonce; bytes giveProof; }',
-]);
-const TEST_TUNE_DATA_ABI = parseAbiParameters([
-  'TestTuneData',
-  'struct TestTuneData { uint256 assets; uint256 protocolAssets; int256 rebalanceAssets; }',
-]);
 
 describe('TransferTaker', function () {
   async function deployFixture() {
@@ -93,6 +83,7 @@ describe('TransferTaker', function () {
       takerAsset,
       taker,
       verifier,
+      tuner,
     };
   }
 
@@ -245,6 +236,7 @@ describe('TransferTaker', function () {
       takerPool,
       giver,
       verifier,
+      tuner,
     } = await loadFixture(deployFixture);
 
     const giveAssets = 123_486n;
@@ -255,16 +247,31 @@ describe('TransferTaker', function () {
     const poolInitAssets = takeAssets * 5n;
     const takeReceiver = anotherClient.account.address;
     const giveProof = '0x0123456780abcdef';
-    const takerData = encodeAbiParameters(TRANSFER_TAKE_DATA_ABI, [{
-      giveAssets,
-      takeNonce,
-      giveProof,
-    }]);
-    const tunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
-      assets: takeAssets,
-      protocolAssets,
-      rebalanceAssets,
-    }]);
+
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setExpectedAssets',
+      args: [
+        takeAssets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setProtocolAssets',
+      args: [
+        protocolAssets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setRebalanceAssets',
+      args: [
+        rebalanceAssets, // assets
+      ],
+    });
 
     expect(await publicClient.readContract({
       abi: taker.abi,
@@ -287,26 +294,26 @@ describe('TransferTaker', function () {
     });
 
     await expect(regularClient.writeContract({
-      abi: takerPool.abi,
-      address: takerPool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
         takeAssets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        takeNonce, // nonce
+        giveAssets, // giveAssets
+        giveProof, // giveProof
       ],
     })).rejectedWith('InvalidEvent'); // Wrong "regular" client used instead of "another"
 
     await expect(anotherClient.writeContract({
-      abi: takerPool.abi,
-      address: takerPool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
         takeAssets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        takeNonce, // nonce
+        giveAssets, // giveAssets
+        giveProof, // giveProof
       ],
     })).rejectedWith('InvalidEvent');
 
@@ -341,14 +348,14 @@ describe('TransferTaker', function () {
     });
 
     const hash = await anotherClient.writeContract({
-      abi: takerPool.abi,
-      address: takerPool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
         takeAssets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        takeNonce, // nonce
+        giveAssets, // giveAssets
+        giveProof, // giveProof
       ],
     });
 
@@ -407,14 +414,14 @@ describe('TransferTaker', function () {
     expect(poolRebalanceAssets).equal(rebalanceAssets);
 
     await expect(anotherClient.writeContract({
-      abi: takerPool.abi,
-      address: takerPool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
         takeAssets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        takeNonce, // nonce
+        giveAssets, // giveAssets
+        giveProof, // giveProof
       ],
     })).rejectedWith(`AlreadyTaken("${checksumAddress(takeReceiver)}", ${takeNonce})`);
   });
@@ -430,6 +437,7 @@ describe('TransferTaker', function () {
       takerPool,
       giver,
       verifier,
+      tuner,
     } = await loadFixture(deployFixture);
 
     const giveAssets = 123_486n;
@@ -441,21 +449,31 @@ describe('TransferTaker', function () {
     const poolInitAssets = takeAssets * 5n;
     const takeReceiver = anotherClient.account.address;
     const giveProof = '0x0123456780abcdef';
-    const takerData = encodeAbiParameters(TRANSFER_TAKE_DATA_ABI, [{
-      giveAssets,
-      takeNonce,
-      giveProof,
-    }]);
-    const takerData2 = encodeAbiParameters(TRANSFER_TAKE_DATA_ABI, [{
-      giveAssets,
-      takeNonce: takeNonce2,
-      giveProof,
-    }]);
-    const tunerData = encodeAbiParameters(TEST_TUNE_DATA_ABI, [{
-      assets: takeAssets,
-      protocolAssets,
-      rebalanceAssets,
-    }]);
+
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setExpectedAssets',
+      args: [
+        takeAssets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setProtocolAssets',
+      args: [
+        protocolAssets, // assets
+      ],
+    });
+    await ownerClient.writeContract({
+      abi: tuner.abi,
+      address: tuner.address,
+      functionName: 'setRebalanceAssets',
+      args: [
+        rebalanceAssets, // assets
+      ],
+    });
 
     expect(await publicClient.readContract({
       abi: taker.abi,
@@ -508,27 +526,27 @@ describe('TransferTaker', function () {
     });
 
     await expect(regularClient.writeContract({
-      abi: takerPool.abi,
-      address: takerPool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
         takeAssets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        takeNonce, // nonce
+        giveAssets, // giveAssets
+        giveProof, // giveProof
       ],
     })).rejectedWith('InvalidEvent'); // Wrong "regular" client used instead of "another"
 
     // First
     await anotherClient.writeContract({
-      abi: takerPool.abi,
-      address: takerPool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
         takeAssets, // assets
-        taker.address, // taker
-        takerData, // takerData
-        tunerData, // tunerData
+        takeNonce, // nonce
+        giveAssets, // giveAssets
+        giveProof, // giveProof
       ],
     });
 
@@ -570,14 +588,14 @@ describe('TransferTaker', function () {
 
     // Second
     const hash = await anotherClient.writeContract({
-      abi: takerPool.abi,
-      address: takerPool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
         takeAssets, // assets
-        taker.address, // taker
-        takerData2, // takerData
-        tunerData, // tunerData
+        takeNonce2, // nonce
+        giveAssets, // giveAssets
+        giveProof, // giveProof
       ],
     });
 
@@ -636,14 +654,14 @@ describe('TransferTaker', function () {
     expect(poolRebalanceAssets).equal(rebalanceAssets * 2n);
 
     await expect(anotherClient.writeContract({
-      abi: takerPool.abi,
-      address: takerPool.address,
+      abi: taker.abi,
+      address: taker.address,
       functionName: 'take',
       args: [
         takeAssets, // assets
-        taker.address, // taker
-        takerData2, // takerData
-        tunerData, // tunerData
+        takeNonce2, // nonce
+        giveAssets, // giveAssets
+        giveProof, // giveProof
       ],
     })).rejectedWith(`AlreadyTaken("${checksumAddress(takeReceiver)}", ${takeNonce2})`);
   });

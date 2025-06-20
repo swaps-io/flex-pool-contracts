@@ -29,13 +29,7 @@ contract LinearTuner is ILinearTuner, PoolAware {
         rebalancePercent = rebalancePercent_;
     }
 
-    function tune(
-        uint256 assets_,
-        bytes calldata /* data_ */
-    ) public view override returns (
-        uint256 protocolAssets,
-        int256 rebalanceAssets
-    ) {
+    function tune(uint256 assets_) public view override returns (uint256 protocolAssets, int256 rebalanceAssets) {
         protocolAssets = protocolFixed + PercentLib.applyPercent(assets_, protocolPercent);
 
         int256 equilibrium = pool.equilibriumAssets();

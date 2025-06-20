@@ -26,6 +26,10 @@ Smart contracts of Flex Pool protocol.
   - [Taker](#taker)
     - [Transfer](#transfer)
     - [1inch Fusion+](#1inch-fusion)
+    - [Across](#across)
+      - [Across Fill](#across-fill)
+      - [Across Deposit](#across-deposit)
+    - [CCTP](#cctp)
   - [Verifier](#verifier)
 - [Development](#development)
   - [Stack](#stack)
@@ -405,9 +409,10 @@ The withdraw asset _clamp_ to the available amount can be previewed with the `cl
 >
 > - Params:
 >   - `assets` (`uint256`) - amount of assets to take from pool
->   - `taker` (`address`) - [taker](#taker) contract address
->   - `takerData` (`bytes`) - data to pass to the taker contract
->   - `tunerData` (`bytes`) - data to pass to [tuner](#tuner) assigned to the taker
+>
+> - Returns:
+>   - `takeAssets` (`uint256`) - amount of asset received by taker (i.e. _balance after_ - _balance before_)
+>   - `minGiveAssets` (`uint256`) - minimal amount of asset should be given back to pool enclave
 >
 > - Events:
 >   - `Take`
@@ -418,10 +423,13 @@ The withdraw asset _clamp_ to the available amount can be previewed with the `cl
 >
 > ---
 
-The `take` function is the main point of obtaining the pool [asset](#asset) for solvers. When called, it first validates
-the requested [`taker`](#taker) contract to be whitelisted and extracts [`tuner`](#tuner) assigned to it. The tuner
-calculates how much the solver should [give](#give) assets back to pool for the requested `assets` to take. The result
-is always at least `assets` + `protocolAssets`, plus additional `rebalanceAssets` if it's _positive_.
+The `take` function is the main point of providing the pool [asset](#asset) to solvers. The function is designed to
+be called by a whitelisted [`taker`](#taker) contract that includes provider-specific validation. The taker-assigned
+[`tuner`](#tuner) calculates components of `minGiveAssets` - how much assets the solver should [give](#give) back to
+the pool enclave for the requested `assets` to take. The result is always at least `assets` + `protocolAssets`, plus
+additional `rebalanceAssets` if the value is _positive_. The `takeAssets` value represents actual amount of asset
+sent to the taker, which is at least `assets`, plus additional `rebalanceAssets` if the value is _negative_ (the sign
+is omitted during the calculation).
 
 The `protocolAssets` value is added to [total](#total-assets) assets managed by the pool. In other words, this is a
 commission that the solver pays to liquidity providers for the usage. The underlying ERC-4626 mechanism
@@ -437,10 +445,10 @@ rebalance payment is transferred as _surplus_ to the `taker` contract along with
 > Check out [rebalance](#rebalance) section for info on how tuner's `rebalanceAssets` should be taken into account when
 > checking pool asset availability for a `take`.
 
-The `taker` ensures that the total amount of the received assets is sufficient to guarantee at least _give_ assets for
-the pool on a target chain. The details of this security validation logic depend on implementation of a specific taker
-[provider](#transfer). After validation, and, usually, transfer of _minimal_ needed asset to underlying protocol, a
-take provider transfers unspent assets surplus to the take solver.
+The `taker` ensures that the total amount of the received _take assets_ is sufficient to guarantee at least
+_min give assets_ for the enclave on another chain. The details of this security validation logic depend on
+implementation of a specific taker [provider](#transfer). After validation, and, usually, transfer of _minimal_
+needed asset to underlying protocol, a take provider transfers unspent assets surplus to the take solver.
 
 #### Give
 
@@ -665,7 +673,6 @@ interface that includes single `tune` view function.
 >
 > - Params:
 >   - `assets` (`uint256`) - amount of assets to take
->   - `data` (`bytes`) - extra data that may be used by an implementation
 >
 > - Returns:
 >   - `protocolAssets` (`uint256`) - amount of extra assets solver should return in favor of liquidity providers
@@ -712,35 +719,28 @@ above-zero equilibrium, the tuner subtracts amount from `rebalanceAssets` propor
 
 ### Taker
 
-Taker is a contract that receives the [take](#take) asset in amount of `assets` + `surplusAssets` from pool and handles
-it according to the underlying provider's logic. Along with the asset, the [tuned](#tuner) amounts and other data are
-passed for taker to ensure that the provider can guarantee the minimal amount of asset back during [give](#give)
-operation on another chain. Taker must implement [`ITuner`](contracts/taker/interfaces/ITaker.sol) interface with one
-`take` function.
-
-> ---
->
-> - Function: __`take`__ of [`ITaker`](contracts/taker/interfaces/ITaker.sol)
->
-> - Params:
->   - `caller` (`address`) - address of pool's `take` original caller
->   - `assets` (`uint256`) - amount of assets to take
->   - `surplusAssets` (`uint256`) - extra assets besides the `assets` provided for taker
->   - `giveAssets` (`uint256`) - amount of assets to take
->   - `data` (`bytes`) - extra data that may be used by an implementation
->
-> ---
+Taker contracts are meant to be used by solvers for taking pool liquidity using specific underlying provider's logic.
+A taker contract calls [take](#take) function of pool to receive its [asset](#asset). It will receive _at least_
+the requested `assets` after the successful call - but the balance gain _can be more_ if this is a
+[rebalance](#rebalance)-favorable action. Taker must handle the asset according to the underlying provider's logic and
+ensure that the provider can guarantee the minimal amount of asset back to the pool enclave during [give](#give)
+operation - usually on another chain.
 
 > [!IMPORTANT]
 >
 > Taker implementation must:
-> - verify that the `take` call is _only from_ trusted `pool` contract address
-> - _guarantee_ that `giveAssets` will be (or already) provided back to the pool [enclave](#infrastructure)
-> - _return unused_ part of `assets` + `surplusAssets` to `caller` (or agreed address extracted from `data`)
+> - _call `take`_ of trusted (generally _immutable_) `pool` contract address
+> - _guarantee_ that `minGiveAssets` will be (or already) provided back to the pool [enclave](#infrastructure)
+> - _provide protection_ against pool asset double-spending and call reentrancy attacks
+> - _return unused_ part of received assets to its _caller_ (or agreed address from function data)
+
+Taker implementation is not bound to any specific interface. However, it's common that the function name starts with
+`take` prefix and at least accepts `assets` value to pass to the pool. The rest of the function parameters, as well as
+the list of other functions exposed by the taker contract, depend on specifics of the underlying provider.
 
 #### Transfer
 
-[`TransferTaker`](contracts/taker/transfer/TransferTaker.sol) implementation of [taker](#taker) provides ability to
+[`TransferTaker`](contracts/taker/transfer/TransferTaker.sol) implementation of [taker](#taker) provides an ability to
 [take](#take) available [asset](#asset) from pool _after_ [giving](#give) asset on another chains though. The give
 operation is performed via [`TransferGiver`](contracts/taker/transfer/TransferGiver.sol) contract, that emits
 `TransferGive` event that is verified by the taker.
@@ -756,7 +756,7 @@ operation is performed via [`TransferGiver`](contracts/taker/transfer/TransferGi
 
 #### 1inch Fusion+
 
-[`FusionTaker`](contracts/taker/fusion/FusionTaker.sol) implementation of [taker](#taker) provides ability to
+[`FusionTaker`](contracts/taker/fusion/FusionTaker.sol) implementation of [taker](#taker) provides an ability to
 [take](#take) asset using [1inch Fusion+](https://portal.1inch.dev/documentation/apis/swap/fusion-plus/introduction)
 protocol.
 
@@ -775,6 +775,66 @@ Then the order proceeds according to the 1inch Fusion+ protocol. On success, the
 transferred to the pool (transiting though `FusionGiver` contract if it's a _public_ withdraw), on cancel - back to
 the maker. On destination chain, cancellation returns asset back to pool (possibly though `FusionTaker`), on success -
 to a specified receiver.
+
+#### Across
+
+Takers based on [Across protocol](https://docs.across.to/introduction/what-is-across). Two primary flows are supported:
+- [_fill_](#across-fill) - take pool asset for filling an already deposited order on another chain in exchange for
+  repayment to the origin's pool of the same enclave
+- [_deposit_](#across-deposit) - take pool asset and immediately deposit it expecting the order to be filled on another
+  chain with the same enclave's pool as recipient
+
+##### Across Fill
+
+[`AcrossFillTaker`](contracts/taker/across/AcrossFillTaker.sol) implementation of [taker](#taker) provides an ability to
+[take](#take) pool asset for filling an already deposited order on another chain in exchange for repayment to the
+origin's pool of the same [enclave](#infrastructure). The taker contract expects input and output tokens to _match_
+tokens managed by pools in corresponding chains.
+
+First, Across _deposit_ must be committed on the origin chain. This action emits `FundsDeposited` event, the proof of
+which is expected on the take chain (`depositProof`). Along with the proof, the `takeToFillRelay` function accepts a
+number of parameters to reconstruct the original event for verification.
+
+> [!NOTE]
+>
+> Number of `assets` for `take` is allowed to be different from `outputAssets` due to [rebalance](#rebalance) logic and
+> strict validation of the original event components. The take sufficiency will be validated still and any surplus
+> assets of the operation will be returned to the taker caller.
+
+Once event and parameters are verified, `SpokePool`'s `fillRelay` function is called. The taker contract provides the
+asset for the fill as `msg.sender`, specifying the _repayment_ chain to be the origin `giveChain` chain and the
+_receiver_ account to be `givePool`, thus ensuring `givePoolAsset` token will be returned to the enclave eventually.
+
+> [!NOTE]
+>
+> If any of `take`, verification, or `fillRelay` phases fails, entire `takeToFillRelay` call fails.
+
+##### Across Deposit
+
+[`AcrossDepositTaker`](contracts/taker/across/AcrossDepositTaker.sol) implementation of [taker](#taker) provides an
+ability to [take](#take) pool asset and immediately deposit it expecting the order to be filled on another chain with
+the same enclave's pool as recipient. The order created has input and output tokens _matching_ the tokens managed by
+the pools in corresponding chains.
+
+As the first step, a solver should call `takeToDeposit` function of the taker. The taker will receive at least `assets`
+from the pool, which is with the optional [surplus](#rebalance) should be sufficient to cover `inputAmount` (the rest
+is returned to the caller). The `outputAmount` value should cover pool-requested `minGiveAssets`.
+
+Once deposit is successfully created, the solver should obtain `FundsDeposited` event details and fill the order
+on the target chain (`giveChain`) using `SpokePool`'s `fillRelay` function. If this part is failed (deadline exceeded),
+funds are returned to the pool on the origin chain by Across protocol - as specified in the on-chain formed order.
+
+#### CCTP
+
+[`CctpTaker`](contracts/taker/cctp/CctpTaker.sol) implementation of [taker](#taker) provides an ability to [take](#take)
+pool asset and _burn_ it using Circle's [CCTP protocol](https://developers.circle.com/stablecoins/cctp-getting-started).
+The burned asset then can be _minted_ on destination chain using the protocol. The minted asset (except the protocol
+fee) is automatically directed to the destination chain's pool (configured as recipient during the _burn_ phase).
+
+> [!NOTE]
+>
+> The solver who bridges the asset using CCTP taker benefits from the _surplus_ asset, provided by pool to the taker
+> contract and unspent during _burn_. This surplus is part of the pool's [rebalance](#rebalance) logic.
 
 ### Verifier
 
@@ -815,6 +875,7 @@ implementations to ensure [take](#take) operation soundness. Single `validateEve
 |------|---------|-----------|-------|---------|
 | [`@openzeppelin/contracts`](https://github.com/OpenZeppelin/openzeppelin-contracts/tree/e4f70216d759d8e6a64144a9e1f7bbeed78e7079) | `5.3.0` | [NPM package](https://www.npmjs.com/package/@openzeppelin/contracts/v/5.3.0) | Global | Common utilities |
 | [`@1inch/cross-chain-swap`](https://github.com/1inch/cross-chain-swap/tree/ac885535b572e85526bae10485ca64b449005ee2) | `1.0.0` | [Submodule](submodules/1inch/cross-chain-swap) | [`taker/fusion`](contracts/taker/fusion) | [1inch Fusion+ taker provider](#1inch-fusion) |
+| [`@across-protocol/contracts`](https://github.com/across-protocol/contracts/tree/94c9692b8bae43aa9c35313b25579764a8e6d0c0) | `4.0.12` | [Submodule](submodules/across-protocol/contracts) | [`taker/across`](contracts/taker/across) | [Across taker provider](#across) |
 
 ### Setup
 

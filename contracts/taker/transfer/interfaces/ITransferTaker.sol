@@ -10,9 +10,7 @@ import {IAssetRescuer} from "../../../rescue/interfaces/IAssetRescuer.sol";
 
 import {IControllable} from "../../../control/interfaces/IControllable.sol";
 
-import {ITaker} from "../../interfaces/ITaker.sol";
-
-interface ITransferTaker is ITaker, IPoolAware, IVerifierAware, IAssetRescuer, IControllable {
+interface ITransferTaker is IPoolAware, IVerifierAware, IAssetRescuer, IControllable {
     error InsufficientGiveAssets(uint256 assets, uint256 minAssets);
     error AlreadyTaken(address receiver, uint256 nonce);
 
@@ -23,4 +21,11 @@ interface ITransferTaker is ITaker, IPoolAware, IVerifierAware, IAssetRescuer, I
     function giveDecimalsShift() external view returns (int256);
 
     function taken(address receiver, uint256 nonce) external view returns (bool);
+
+    function take(
+        uint256 assets,
+        uint256 nonce,
+        uint256 giveAssets,
+        bytes calldata giveProof
+    ) external;
 }

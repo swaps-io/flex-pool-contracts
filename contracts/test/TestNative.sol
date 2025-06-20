@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.26;
 
-contract TestNative {
-    event TestResult(uint256 value);
+import {NativeReceiver} from "../util/receive/NativeReceiver.sol";
 
-    receive() external payable {}
+contract TestNative is NativeReceiver {
+    event TestResult(uint256 value);
 
     function testValueBalance() public payable {
         uint256 balance = address(this).balance - msg.value;

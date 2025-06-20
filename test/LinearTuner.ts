@@ -37,7 +37,6 @@ describe('LinearTuner', function () {
 
     const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
       0n, // assets
-      '0x', // data
     ]);
     expect(protocolAssets).equal(100n); // 100 fixed
     expect(rebalanceAssets).equal(0n); // No fixed: applied when > 0
@@ -48,7 +47,6 @@ describe('LinearTuner', function () {
 
     const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
       123_456n, // assets
-      '0x', // data
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
     expect(rebalanceAssets).equal(5_386n); // eq 0 -> -123_456, 5_185.152 ceil + 200 fixed
@@ -61,7 +59,6 @@ describe('LinearTuner', function () {
 
     const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
       123_456n, // assets
-      '0x', // data
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
     expect(rebalanceAssets).equal(5_386n); // eq -400_000 -> -523_456, 5_185.152 ceil + 200 fixed
@@ -74,7 +71,6 @@ describe('LinearTuner', function () {
 
     const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
       123_456n, // assets
-      '0x', // data
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
     expect(rebalanceAssets).equal(0n); // eq +400_000 -> +276_544, yet budget is empty
@@ -88,7 +84,6 @@ describe('LinearTuner', function () {
 
     const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
       123_456n, // assets
-      '0x', // data
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
     expect(rebalanceAssets).equal(-3_086n); // eq +400_000 -> +276_544, -3_086.4 floor
@@ -102,7 +97,6 @@ describe('LinearTuner', function () {
 
     const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
       123_456n, // assets
-      '0x', // data
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
     expect(rebalanceAssets).equal(-10_000n); // eq +123_456 -> 0, entire budget
@@ -116,7 +110,6 @@ describe('LinearTuner', function () {
 
     const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
       123_456n, // assets
-      '0x', // data
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
     expect(rebalanceAssets).equal(-8_310n); // eq +88_000 -> 0 -> -35_456, entire budget, 1489.152 ceil + 200 fixed

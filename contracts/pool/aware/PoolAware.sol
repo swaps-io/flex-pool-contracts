@@ -12,9 +12,4 @@ contract PoolAware is IPoolAware {
         pool = pool_;
         poolAsset = IERC20(pool_.asset());
     }
-
-    modifier onlyPool {
-        require(msg.sender == address(pool), CallerNotPool(msg.sender, address(pool)));
-        _;
-    }
 }

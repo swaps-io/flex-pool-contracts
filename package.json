@@ -17,6 +17,7 @@
     "@1inch/cross-chain-swap": "link:./submodules/1inch/cross-chain-swap",
     "@1inch/limit-order-protocol": "link:./submodules/1inch/cross-chain-swap/lib/limit-order-protocol",
     "@1inch/solidity-utils": "link:./submodules/1inch/cross-chain-swap/lib/solidity-utils",
+    "@across-protocol/contracts": "link:./submodules/across-protocol/contracts",
     "@openzeppelin/contracts": "5.3.0"
   },
   "devDependencies": {
@@ -31,13 +32,13 @@
     "@types/chai-as-promised": "7.1.8",
     "@types/mocha": "10.0.10",
     "chai": "4.5.0",
-    "hardhat": "2.24.1",
+    "hardhat": "2.24.3",
     "hardhat-contract-sizer": "2.10.0",
     "hardhat-gas-reporter": "2.3.0",
     "solhint": "5.1.0",
     "solidity-coverage": "0.8.16",
     "ts-node": "10.9.2",
     "typescript": "5.8.3",
-    "viem": "2.30.6"
+    "viem": "2.31.3"
   }
 }

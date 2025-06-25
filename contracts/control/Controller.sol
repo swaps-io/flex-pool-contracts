@@ -7,7 +7,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {NativeReceiver} from "../util/receive/NativeReceiver.sol";
 
-import {IController} from './interfaces/IController.sol';
+import {IController} from "./interfaces/IController.sol";
 
 contract Controller is IController, Ownable2Step, NativeReceiver {
     constructor(address initialOwner_)

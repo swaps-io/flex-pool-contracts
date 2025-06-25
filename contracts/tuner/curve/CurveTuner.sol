@@ -46,11 +46,13 @@ contract CurveTuner is ICurveTuner, PoolAware, Controllable {
 
         int256 equilibrium = pool.equilibriumAssets() + equilibriumShift;
         if (equilibrium > 0) {
+            uint256 relief = Math.min(uint256(equilibrium), assets_);
+            assets_ -= relief;
+
             uint256 total = pool.totalAssets();
             if (total != 0) {
-                uint256 relief = Math.min(Math.min(uint256(equilibrium), assets_), total);
+                relief = Math.min(relief, total);
                 rebalanceAssets -= int256(Math.mulDiv(pool.rebalanceAssets(), relief * 2, relief + total));
-                assets_ -= relief;
             }
         }
 

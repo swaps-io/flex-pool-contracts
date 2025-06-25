@@ -28,7 +28,7 @@ const config: HardhatUserConfig = {
     strict: true,
     only: [
       'contracts/pool/FlexPool.sol',
-      'contracts/tuner/curve/CurveTuner.sol',
+      'contracts/tuner/hyper/HyperTuner.sol',
       'contracts/tuner/linear/LinearTuner.sol',
       'contracts/taker/across/AcrossDepositTaker.sol',
       'contracts/taker/across/AcrossFillTaker.sol',

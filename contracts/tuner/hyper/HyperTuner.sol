@@ -8,9 +8,9 @@ import {Controllable} from "../../control/Controllable.sol";
 
 import {PercentLib, Math} from "../../util/libraries/PercentLib.sol";
 
-import {ICurveTuner} from "./interfaces/ICurveTuner.sol";
+import {IHyperTuner} from "./interfaces/IHyperTuner.sol";
 
-contract CurveTuner is ICurveTuner, PoolAware, Controllable {
+contract HyperTuner is IHyperTuner, PoolAware, Controllable {
     uint256 public immutable override protocolFixed;
     uint256 public immutable override protocolPercent;
     uint256 public immutable override rebalanceFixed;

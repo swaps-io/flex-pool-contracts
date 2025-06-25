@@ -8,7 +8,7 @@ import {IControllable} from "../../../control/interfaces/IControllable.sol";
 
 import {ITuner} from "../../interfaces/ITuner.sol";
 
-interface ICurveTuner is ITuner, IPoolAware, IControllable {
+interface IHyperTuner is ITuner, IPoolAware, IControllable {
     event EquilibriumShifterEnabled(address indexed shifter);
     event EquilibriumShifterDisabled(address indexed shifter);
 

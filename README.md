@@ -23,7 +23,7 @@ Smart contracts of Flex Pool protocol.
     - [Rebalance Assets](#rebalance-assets)
   - [Tuner](#tuner)
     - [Linear Tuner](#linear-tuner)
-    - [Curve Tuner](#curve-tuner)
+    - [Hyper Tuner](#hyper-tuner)
   - [Taker](#taker)
     - [Transfer](#transfer)
     - [1inch Fusion+](#1inch-fusion)
@@ -718,7 +718,7 @@ above-zero equilibrium, the tuner subtracts amount from `rebalanceAssets` propor
 >   - `protocolAssets` = `20_000` (`10_000` + `1_000_000` * `1%`)
 >   - `rebalanceAssets` = `-32_000` (relieve: `80_000` * `1_000_000` / `2_500_000`)
 
-#### Curve Tuner
+#### Hyper Tuner
 
 TODO
 

@@ -14,8 +14,8 @@ import {Controllable} from "../../control/Controllable.sol";
 import {IHyperTuner} from "./interfaces/IHyperTuner.sol";
 
 contract HyperTuner is IHyperTuner, LinearProtocolFossil, LinearRebalanceFossil, PoolAware, Controllable {
-    int256 public transient override equilibriumShift;
-    mapping(address shifter => bool) public override equilibriumShifter;
+    uint256 public transient override extraReliefAssets;
+    mapping(address reliever => bool) public override relieverEnabled;
 
     constructor(
         IFlexPool pool_,
@@ -31,19 +31,23 @@ contract HyperTuner is IHyperTuner, LinearProtocolFossil, LinearRebalanceFossil,
         Controllable(controller_)
     {}
 
-    modifier onlyEquilibriumShifter {
-        require(equilibriumShifter[msg.sender], CallerNotEquilibriumShifter(msg.sender));
+    modifier onlyEnabledReliever {
+        require(relieverEnabled[msg.sender], CallerNotReliever(msg.sender));
         _;
     }
 
     function tune(uint256 assets_) public view override returns (uint256 protocolAssets, int256 rebalanceAssets) {
         protocolAssets = _applyLinearProtocol(assets_);
 
-        int256 equilibrium = pool.equilibriumAssets() + equilibriumShift;
+        uint256 relief = extraReliefAssets;
+        int256 equilibrium = pool.equilibriumAssets();
         if (equilibrium > 0) {
-            uint256 relief = Math.min(uint256(equilibrium), assets_);
-            assets_ -= relief;
+            uint256 eqRelief = Math.min(uint256(equilibrium), assets_);
+            relief += eqRelief;
+            assets_ -= eqRelief;
+        }
 
+        if (relief != 0) {
             uint256 total = pool.totalAssets();
             if (total != 0) {
                 relief = Math.min(relief, total);
@@ -56,19 +60,19 @@ contract HyperTuner is IHyperTuner, LinearProtocolFossil, LinearRebalanceFossil,
         }
     }
 
-    function setEquilibriumShift(int256 assets_) public override onlyEquilibriumShifter {
-        equilibriumShift = assets_;
+    function setExtraReliefAssets(uint256 assets_) public override onlyEnabledReliever {
+        extraReliefAssets = assets_;
     }
 
-    function enableEquilibriumShifter(address shifter_) public override onlyController {
-        require(!equilibriumShifter[shifter_], EquilibriumShifterAlreadyEnabled(shifter_));
-        equilibriumShifter[shifter_] = true;
-        emit EquilibriumShifterEnabled(shifter_);
+    function enableReliever(address reliever_) public override onlyController {
+        require(!relieverEnabled[reliever_], RelieverAlreadyEnabled(reliever_));
+        relieverEnabled[reliever_] = true;
+        emit RelieverEnabled(reliever_);
     }
 
-    function disableEquilibriumShifter(address shifter_) public override onlyController {
-        require(equilibriumShifter[shifter_], EquilibriumShifterAlreadyDisabled(shifter_));
-        equilibriumShifter[shifter_] = false;
-        emit EquilibriumShifterDisabled(shifter_);
+    function disableReliever(address reliever_) public override onlyController {
+        require(relieverEnabled[reliever_], RelieverAlreadyDisabled(reliever_));
+        relieverEnabled[reliever_] = false;
+        emit RelieverDisabled(reliever_);
     }
 }

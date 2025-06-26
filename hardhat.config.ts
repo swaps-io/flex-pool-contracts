@@ -36,7 +36,7 @@ const config: HardhatUserConfig = {
       'contracts/taker/fusion/FusionGiver.sol',
       'contracts/taker/fusion/FusionTaker.sol',
       'contracts/taker/transfer/TransferGiver.sol',
-      'contracts/taker/transfer/TransferShiftGiver.sol',
+      'contracts/taker/transfer/TransferReliefGiver.sol',
       'contracts/taker/transfer/TransferTaker.sol',
       'contracts/control/Controller.sol',
     ],

@@ -2,20 +2,18 @@
 
 pragma solidity ^0.8.26;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
+import {LinearProtocolFossil} from "../util/protocol/LinearProtocolFossil.sol";
+import {LinearRebalanceFossil} from "../util/rebalance/LinearRebalanceFossil.sol";
+
 import {PoolAware, IFlexPool} from "../../pool/aware/PoolAware.sol";
 
 import {Controllable} from "../../control/Controllable.sol";
 
-import {PercentLib, Math} from "../../util/libraries/PercentLib.sol";
-
 import {IHyperTuner} from "./interfaces/IHyperTuner.sol";
 
-contract HyperTuner is IHyperTuner, PoolAware, Controllable {
-    uint256 public immutable override protocolFixed;
-    uint256 public immutable override protocolPercent;
-    uint256 public immutable override rebalanceFixed;
-    uint256 public immutable override rebalancePercent;
-
+contract HyperTuner is IHyperTuner, LinearProtocolFossil, LinearRebalanceFossil, PoolAware, Controllable {
     int256 public transient override equilibriumShift;
     mapping(address shifter => bool) public override equilibriumShifter;
 
@@ -27,14 +25,11 @@ contract HyperTuner is IHyperTuner, PoolAware, Controllable {
         uint256 rebalanceFixed_,
         uint256 rebalancePercent_
     )
+        LinearProtocolFossil(protocolFixed_, protocolPercent_)
+        LinearRebalanceFossil(rebalanceFixed_, rebalancePercent_)
         PoolAware(pool_)
         Controllable(controller_)
-    {
-        protocolFixed = protocolFixed_;
-        protocolPercent = protocolPercent_;
-        rebalanceFixed = rebalanceFixed_;
-        rebalancePercent = rebalancePercent_;
-    }
+    {}
 
     modifier onlyEquilibriumShifter {
         require(equilibriumShifter[msg.sender], CallerNotEquilibriumShifter(msg.sender));
@@ -42,7 +37,7 @@ contract HyperTuner is IHyperTuner, PoolAware, Controllable {
     }
 
     function tune(uint256 assets_) public view override returns (uint256 protocolAssets, int256 rebalanceAssets) {
-        protocolAssets = protocolFixed + PercentLib.applyPercent(assets_, protocolPercent);
+        protocolAssets = _applyLinearProtocol(assets_);
 
         int256 equilibrium = pool.equilibriumAssets() + equilibriumShift;
         if (equilibrium > 0) {
@@ -57,7 +52,7 @@ contract HyperTuner is IHyperTuner, PoolAware, Controllable {
         }
 
         if (assets_ != 0) {
-            rebalanceAssets += int256(rebalanceFixed + PercentLib.applyPercent(assets_, rebalancePercent));
+            rebalanceAssets += int256(_applyLinearRebalance(assets_));
         }
     }
 

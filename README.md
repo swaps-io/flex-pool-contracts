@@ -759,6 +759,8 @@ operation is performed via [`TransferGiver`](contracts/taker/transfer/TransferGi
 > `give` (or `giveHold`) functions with _the same_ `takeChain`, `takeReceiver` and `takeNonce` params will result in
 > only _one_ take possible (since subsequent ones will be blocked after the record of a first one).
 
+TODO: TransferShiftGiver
+
 #### 1inch Fusion+
 
 [`FusionTaker`](contracts/taker/fusion/FusionTaker.sol) implementation of [taker](#taker) provides an ability to

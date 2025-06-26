@@ -24,12 +24,22 @@ contract TransferGiver is ITransferGiver, PoolAware, AssetPermitter, AssetRescue
         Controllable(controller_)
     {}
 
-    function give(uint256 assets_, uint256 takeChain_, address takeReceiver_, uint256 takeNonce_) public override {
+    function give(
+        uint256 assets_,
+        uint256 takeChain_,
+        address takeReceiver_,
+        uint256 takeNonce_
+    ) public override virtual {
         SafeERC20.safeTransferFrom(poolAsset, msg.sender, address(pool), assets_);
         _emitGiveEvent(assets_, takeChain_, takeReceiver_, takeNonce_);
     }
 
-    function giveHold(uint256 assets_, uint256 takeChain_, address takeReceiver_, uint256 takeNonce_) public override {
+    function giveHold(
+        uint256 assets_,
+        uint256 takeChain_,
+        address takeReceiver_,
+        uint256 takeNonce_
+    ) public override virtual {
         SafeERC20.safeTransfer(poolAsset, address(pool), assets_);
         _emitGiveEvent(assets_, takeChain_, takeReceiver_, takeNonce_);
     }

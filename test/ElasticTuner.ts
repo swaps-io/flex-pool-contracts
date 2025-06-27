@@ -3,14 +3,14 @@ import hre from 'hardhat';
 import { expect } from 'chai';
 import { parseEther } from 'viem';
 
-describe('HyperTuner', function () {
+describe('ElasticTuner', function () {
   async function deployFixture() {
     const publicClient = await hre.viem.getPublicClient();
     const [walletClient] = await hre.viem.getWalletClients();
 
     const pool = await hre.viem.deployContract('TestPool');
 
-    const tuner = await hre.viem.deployContract('HyperTuner', [
+    const tuner = await hre.viem.deployContract('ElasticTuner', [
       pool.address, // pool
       walletClient.account.address, // controller
       100n, // protocolFixed

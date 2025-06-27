@@ -12,7 +12,7 @@ import {IControllable} from "../../../control/interfaces/IControllable.sol";
 
 import {ITuner} from "../../interfaces/ITuner.sol";
 
-interface IHyperTuner is ITuner, ILinearProtocol, ILinearRebalance, IExtraRelief, IPoolAware, IControllable {
+interface IElasticTuner is ITuner, ILinearProtocol, ILinearRebalance, IExtraRelief, IPoolAware, IControllable {
     event RelieverEnabled(address indexed reliever);
     event RelieverDisabled(address indexed reliever);
 

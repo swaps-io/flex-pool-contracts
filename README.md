@@ -23,7 +23,7 @@ Smart contracts of Flex Pool protocol.
     - [Rebalance Assets](#rebalance-assets)
   - [Tuner](#tuner)
     - [Linear Tuner](#linear-tuner)
-    - [Hyper Tuner](#hyper-tuner)
+    - [Elastic Tuner](#elastic-tuner)
   - [Taker](#taker)
     - [Transfer](#transfer)
     - [1inch Fusion+](#1inch-fusion)
@@ -718,9 +718,9 @@ above-zero equilibrium, the tuner subtracts amount from `rebalanceAssets` propor
 >   - `protocolAssets` = `20_000` (`10_000` + `1_000_000` * `1%`)
 >   - `rebalanceAssets` = `-32_000` (relief: `80_000` * `1_000_000` / `2_500_000`)
 
-#### Hyper Tuner
+#### Elastic Tuner
 
-[`HyperTuner`](contracts/tuner/hyper/HyperTuner.sol) implementation of [tuner](#tuner). Similarly to the
+[`ElasticTuner`](contracts/tuner/elastic/ElasticTuner.sol) implementation of [tuner](#tuner). Similarly to the
 [`LinearTuner`](#linear-tuner), this contract accepts protocol & rebalance linear parameters. Additionally,
 `controller` parameter is accepted for managing _relievers_ - new concept to this variant.
 
@@ -728,14 +728,14 @@ The `protocolAssets` calculation works exactly the same way as in _linear_ imple
 `assets` for taking from pool when equilibrium reports insufficiency" part of `rebalanceAssets` calculation. The key
 difference is in `rebalanceAssets` handling when _relief_ is provided. Now the rebalance budget to use is calculated as
 proportion of the _relief_ assets to _total_ pool assets, instead of old _equilibrium_ difference. Additionally, special
-_hyperbolic_ (hence the name) coefficient is applied to motivate and compensate solvers when rebalancing lower liquidity
-amounts. The coefficient is calculated using $f(x) = 2 - \frac{2}{x + 1}$ function, where $x = relief / total$.
+coefficient based on _reciprocal_ function is applied to motivate and compensate solvers when rebalancing lower amounts.
+The coefficient is calculated using $f(x) = 2 - \frac{2}{x + 1}$ function, where $x = relief / total$.
 
 > [!TIP]
 >
-> _`HyperTuner` coefficient function_
+> _`ElasticTuner` coefficient function_
 >
-> ![HyperTuner coefficient function](data/images/hyper-func.svg)
+> ![ElasticTuner coefficient function](data/images/elastic-func.svg)
 
 The tuner logic also includes an ability for whitelisted _relievers_ to specify _extra relief_ that has been provided
 by solver to pool besides the equilibrium change by _take_ operation. For example, bringing liquidity back to the pool
@@ -783,7 +783,7 @@ _Relief Giver_
 There is another variant of `TransferGiver`: [`TransferReliefGiver`](contracts/taker/transfer/TransferReliefGiver.sol).
 It works similarly to the original one, except it's aware of its
 [`IExtraRelief`](contracts/tuner/util/relief/interfaces/IExtraRelief.sol)-capable [tuner](#tuner) (such as
-[`HyperTuner`](#hyper-tuner)). After providing asset to pool, the giver collects _possible_ surplus assets for the
+[`ElasticTuner`](#elastic-tuner)). After providing asset to pool, the giver collects _possible_ surplus assets for the
 [rebalance](#rebalance)-beneficial action and sends them back to the caller.
 
 #### 1inch Fusion+

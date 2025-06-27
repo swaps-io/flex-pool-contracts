@@ -11,9 +11,9 @@ import {PoolAware, IFlexPool} from "../../pool/aware/PoolAware.sol";
 
 import {Controllable} from "../../control/Controllable.sol";
 
-import {IHyperTuner} from "./interfaces/IHyperTuner.sol";
+import {IElasticTuner} from "./interfaces/IElasticTuner.sol";
 
-contract HyperTuner is IHyperTuner, LinearProtocolFossil, LinearRebalanceFossil, PoolAware, Controllable {
+contract ElasticTuner is IElasticTuner, LinearProtocolFossil, LinearRebalanceFossil, PoolAware, Controllable {
     uint256 public transient override extraReliefAssets;
     mapping(address reliever => bool) public override relieverEnabled;
 

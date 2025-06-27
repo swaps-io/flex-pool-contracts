@@ -34,7 +34,7 @@ describe('TransferTaker', function () {
       'Pool Test Token - Taker', // name
       'PTTT', // symbol
       18, // decimalsOffset
-      ownerClient.account.address, // initialOwner
+      ownerClient.account.address, // controller
     ]);
 
     const giverPool = await hre.viem.deployContract('TestPool');

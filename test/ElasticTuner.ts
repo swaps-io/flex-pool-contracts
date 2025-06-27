@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import hre from 'hardhat';
 import { expect } from 'chai';
-import { checksumAddress, parseEther } from 'viem';
+import { parseEther, zeroAddress } from 'viem';
 
 describe('ElasticTuner', function () {
   async function deployFixture() {
@@ -12,7 +12,6 @@ describe('ElasticTuner', function () {
 
     const tuner = await hre.viem.deployContract('ElasticTuner', [
       pool.address, // pool
-      walletClient.account.address, // controller
       100n, // protocolFixed
       parseEther('3.5'), // protocolPercent
       200n, // rebalanceFixed
@@ -123,25 +122,20 @@ describe('ElasticTuner', function () {
 
   // Relief
 
-  it('Should not let setting extra relief for disabled reliever', async function () {
-    const { tuner, walletClient } = await loadFixture(deployFixture);
+  it('Should temporary set extra relief for enabled reliever', async function () {
+    const { tuner } = await loadFixture(deployFixture);
 
-    await expect(
-      tuner.write.setExtraReliefAssets([1n]),
-    ).rejectedWith(
-      `CallerNotReliever("${checksumAddress(walletClient.account.address)}")`,
-    );
-  });
+    const reliefTest = await hre.viem.deployContract('TestElasticRelief', [
+      tuner.address, // tuner
+    ]);
 
-  it('Should let setting extra relief for enabled reliever', async function () {
-    const { tuner, walletClient } = await loadFixture(deployFixture);
-
-    await tuner.write.enableReliever([walletClient.account.address]);
-    await tuner.write.setExtraReliefAssets([1n]);
+    await reliefTest.write.testSetExtraReliefAssets([1n]);
 
     // Ensure transient storage is used
     const relief = await tuner.read.extraReliefAssets();
     expect(relief).equal(0n);
+    const setter = await tuner.read.extraReliefSetter();
+    expect(setter).equal(zeroAddress);
   });
 
   it('Should tune for assets at far positive equilibrium with extra relief', async function () {

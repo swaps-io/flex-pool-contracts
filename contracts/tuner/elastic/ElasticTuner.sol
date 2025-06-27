@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.26;
 
+import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {LinearProtocolFossil} from "../util/protocol/LinearProtocolFossil.sol";
@@ -13,7 +14,14 @@ import {Controllable} from "../../control/Controllable.sol";
 
 import {IElasticTuner} from "./interfaces/IElasticTuner.sol";
 
-contract ElasticTuner is IElasticTuner, LinearProtocolFossil, LinearRebalanceFossil, PoolAware, Controllable {
+contract ElasticTuner is
+    IElasticTuner,
+    LinearProtocolFossil,
+    LinearRebalanceFossil,
+    PoolAware,
+    Controllable,
+    Multicall
+{
     uint256 public transient override extraReliefAssets;
     mapping(address reliever => bool) public override relieverEnabled;
 
@@ -37,21 +45,30 @@ contract ElasticTuner is IElasticTuner, LinearProtocolFossil, LinearRebalanceFos
     }
 
     function tune(uint256 assets_) public view override returns (uint256 protocolAssets, int256 rebalanceAssets) {
+        return tuneRelief(assets_, extraReliefAssets);
+    }
+
+    function tuneRelief(
+        uint256 assets_,
+        uint256 relief_
+    ) public view override returns (
+        uint256 protocolAssets,
+        int256 rebalanceAssets
+    ) {
         protocolAssets = _applyLinearProtocol(assets_);
 
-        uint256 relief = extraReliefAssets;
         int256 equilibrium = pool.equilibriumAssets();
         if (equilibrium > 0) {
-            uint256 eqRelief = Math.min(uint256(equilibrium), assets_);
-            relief += eqRelief;
-            assets_ -= eqRelief;
+            uint256 equilibriumRelief = Math.min(uint256(equilibrium), assets_);
+            relief_ += equilibriumRelief;
+            assets_ -= equilibriumRelief;
         }
 
-        if (relief != 0) {
+        if (relief_ != 0) {
             uint256 total = pool.totalAssets();
             if (total != 0) {
-                relief = Math.min(relief, total);
-                rebalanceAssets -= int256(Math.mulDiv(pool.rebalanceAssets(), relief * 2, relief + total));
+                relief_ = Math.min(relief_, total);
+                rebalanceAssets -= int256(Math.mulDiv(pool.rebalanceAssets(), relief_ * 2, relief_ + total));
             }
         }
 

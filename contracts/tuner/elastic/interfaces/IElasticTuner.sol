@@ -20,6 +20,14 @@ interface IElasticTuner is ITuner, ILinearProtocol, ILinearRebalance, IExtraReli
     error RelieverAlreadyEnabled(address reliever);
     error RelieverAlreadyDisabled(address reliever);
 
+    function tuneRelief(
+        uint256 assets,
+        uint256 relief
+    ) external view returns (
+        uint256 protocolAssets,
+        int256 rebalanceAssets
+    );
+
     function relieverEnabled(address reliever) external view returns (bool);
 
     function enableReliever(address reliever) external; // Only controller

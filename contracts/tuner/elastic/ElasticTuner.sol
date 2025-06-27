@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.26;
 
-import {Multicall} from "@openzeppelin/contracts/utils/Multicall.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {LinearProtocolFossil} from "../util/protocol/LinearProtocolFossil.sol";
@@ -10,24 +9,14 @@ import {LinearRebalanceFossil} from "../util/rebalance/LinearRebalanceFossil.sol
 
 import {PoolAware, IFlexPool} from "../../pool/aware/PoolAware.sol";
 
-import {Controllable} from "../../control/Controllable.sol";
-
 import {IElasticTuner} from "./interfaces/IElasticTuner.sol";
 
-contract ElasticTuner is
-    IElasticTuner,
-    LinearProtocolFossil,
-    LinearRebalanceFossil,
-    PoolAware,
-    Controllable,
-    Multicall
-{
+contract ElasticTuner is IElasticTuner, LinearProtocolFossil, LinearRebalanceFossil, PoolAware {
     uint256 public transient override extraReliefAssets;
-    mapping(address reliever => bool) public override relieverEnabled;
+    address public transient override extraReliefSetter;
 
     constructor(
         IFlexPool pool_,
-        address controller_,
         uint256 protocolFixed_,
         uint256 protocolPercent_,
         uint256 rebalanceFixed_,
@@ -36,16 +25,16 @@ contract ElasticTuner is
         LinearProtocolFossil(protocolFixed_, protocolPercent_)
         LinearRebalanceFossil(rebalanceFixed_, rebalancePercent_)
         PoolAware(pool_)
-        Controllable(controller_)
     {}
 
-    modifier onlyEnabledReliever {
-        require(relieverEnabled[msg.sender], CallerNotReliever(msg.sender));
-        _;
-    }
-
     function tune(uint256 assets_) public view override returns (uint256 protocolAssets, int256 rebalanceAssets) {
-        return tuneRelief(assets_, extraReliefAssets);
+        uint256 relief = extraReliefAssets;
+        if (relief != 0) {
+            address tuner = pool.tuner(extraReliefSetter);
+            require(tuner == address(this), InvalidExtraReliefSetter(extraReliefSetter, tuner));
+        }
+
+        return tuneRelief(assets_, relief);
     }
 
     function tuneRelief(
@@ -77,19 +66,10 @@ contract ElasticTuner is
         }
     }
 
-    function setExtraReliefAssets(uint256 assets_) public override onlyEnabledReliever {
+    function setExtraReliefAssets(uint256 assets_) public override {
         extraReliefAssets = assets_;
-    }
-
-    function enableReliever(address reliever_) public override onlyController {
-        require(!relieverEnabled[reliever_], RelieverAlreadyEnabled(reliever_));
-        relieverEnabled[reliever_] = true;
-        emit RelieverEnabled(reliever_);
-    }
-
-    function disableReliever(address reliever_) public override onlyController {
-        require(relieverEnabled[reliever_], RelieverAlreadyDisabled(reliever_));
-        relieverEnabled[reliever_] = false;
-        emit RelieverDisabled(reliever_);
+        if (assets_ != 0) {
+            extraReliefSetter = msg.sender;
+        }
     }
 }

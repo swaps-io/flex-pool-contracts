@@ -8,17 +8,12 @@ import {IExtraRelief} from "../../util/relief/interfaces/IExtraRelief.sol";
 
 import {IPoolAware} from "../../../pool/aware/interfaces/IPoolAware.sol";
 
-import {IControllable} from "../../../control/interfaces/IControllable.sol";
-
 import {ITuner} from "../../interfaces/ITuner.sol";
 
-interface IElasticTuner is ITuner, ILinearProtocol, ILinearRebalance, IExtraRelief, IPoolAware, IControllable {
-    event RelieverEnabled(address indexed reliever);
-    event RelieverDisabled(address indexed reliever);
+interface IElasticTuner is ITuner, ILinearProtocol, ILinearRebalance, IExtraRelief, IPoolAware {
+    error InvalidExtraReliefSetter(address setter, address tuner);
 
-    error CallerNotReliever(address caller);
-    error RelieverAlreadyEnabled(address reliever);
-    error RelieverAlreadyDisabled(address reliever);
+    function extraReliefSetter() external view returns (address);
 
     function tuneRelief(
         uint256 assets,
@@ -27,10 +22,4 @@ interface IElasticTuner is ITuner, ILinearProtocol, ILinearRebalance, IExtraReli
         uint256 protocolAssets,
         int256 rebalanceAssets
     );
-
-    function relieverEnabled(address reliever) external view returns (bool);
-
-    function enableReliever(address reliever) external; // Only controller
-
-    function disableReliever(address reliever) external; // Only controller
 }

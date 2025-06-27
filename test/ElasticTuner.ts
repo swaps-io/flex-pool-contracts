@@ -1,7 +1,7 @@
 import { loadFixture } from '@nomicfoundation/hardhat-network-helpers';
 import hre from 'hardhat';
 import { expect } from 'chai';
-import { parseEther } from 'viem';
+import { checksumAddress, parseEther } from 'viem';
 
 describe('ElasticTuner', function () {
   async function deployFixture() {
@@ -21,6 +21,7 @@ describe('ElasticTuner', function () {
 
     return {
       publicClient,
+      walletClient,
       pool,
       tuner,
     };
@@ -118,5 +119,58 @@ describe('ElasticTuner', function () {
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
     expect(rebalanceAssets).equal(-8_310n); // eq +88_000 -> 0 -> -35_456, entire budget, 1489.152 ceil + 200 fixed
+  });
+
+  // Relief
+
+  it('Should not let setting extra relief for disabled reliever', async function () {
+    const { tuner, walletClient } = await loadFixture(deployFixture);
+
+    await expect(
+      tuner.write.setExtraReliefAssets([1n]),
+    ).rejectedWith(
+      `CallerNotReliever("${checksumAddress(walletClient.account.address)}")`,
+    );
+  });
+
+  it('Should let setting extra relief for enabled reliever', async function () {
+    const { tuner, walletClient } = await loadFixture(deployFixture);
+
+    await tuner.write.enableReliever([walletClient.account.address]);
+    await tuner.write.setExtraReliefAssets([1n]);
+
+    // Ensure transient storage is used
+    const relief = await tuner.read.extraReliefAssets();
+    expect(relief).equal(0n);
+  });
+
+  it('Should tune for assets at far positive equilibrium with extra relief', async function () {
+    const { tuner, pool } = await loadFixture(deployFixture);
+
+    await pool.write.setTotalAssets([123_456n * 2n]); // 1/2 + 1/4 relief = 3/4 to rebalance -> coefficient is ~0.857
+    await pool.write.setEquilibriumAssets([400_000n]);
+    await pool.write.setRebalanceAssets([10_000n]);
+
+    const [protocolAssets, rebalanceAssets] = await tuner.read.tuneRelief([
+      123_456n, // assets
+      123_456n / 2n, // relief (1/4)
+    ]);
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
+    expect(rebalanceAssets).equal(-8_571n); // eq +400_000 -> +276_544, -8_571.4 floor
+  });
+
+  it('Should tune for assets at far positive equilibrium with excessive extra relief', async function () {
+    const { tuner, pool } = await loadFixture(deployFixture);
+
+    await pool.write.setTotalAssets([123_456n * 2n]); // 1/2 + 3/2 relief = 2 to rebalance -> coefficient is 1
+    await pool.write.setEquilibriumAssets([400_000n]);
+    await pool.write.setRebalanceAssets([10_000n]);
+
+    const [protocolAssets, rebalanceAssets] = await tuner.read.tuneRelief([
+      123_456n, // assets
+      123_456n * 3n / 2n, // relief (3/2)
+    ]);
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
+    expect(rebalanceAssets).equal(-10_000n); // eq +400_000 -> +276_544, -10_000 floor
   });
 });

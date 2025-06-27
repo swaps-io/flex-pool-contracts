@@ -66,54 +66,57 @@ describe('ElasticTuner', function () {
     expect(rebalanceAssets).equal(5_386n); // eq -400_000 -> -523_456, 5_185.152 ceil + 200 fixed
   });
 
-  // it('Should tune for assets at far positive equilibrium and empty rebalance assets', async function () {
-  //   const { tuner, pool } = await loadFixture(deployFixture);
+  it('Should tune for assets at far positive equilibrium and empty rebalance assets', async function () {
+    const { tuner, pool } = await loadFixture(deployFixture);
 
-  //   await pool.write.setEquilibriumAssets([400_000n]);
+    await pool.write.setEquilibriumAssets([400_000n]);
 
-  //   const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
-  //     123_456n, // assets
-  //   ]);
-  //   expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
-  //   expect(rebalanceAssets).equal(0n); // eq +400_000 -> +276_544, yet budget is empty
-  // });
+    const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
+      123_456n, // assets
+    ]);
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
+    expect(rebalanceAssets).equal(0n); // eq +400_000 -> +276_544, yet budget is empty
+  });
 
-  // it('Should tune for assets at far positive equilibrium', async function () {
-  //   const { tuner, pool } = await loadFixture(deployFixture);
+  it('Should tune for assets at far positive equilibrium', async function () {
+    const { tuner, pool } = await loadFixture(deployFixture);
 
-  //   await pool.write.setEquilibriumAssets([400_000n]);
-  //   await pool.write.setRebalanceAssets([10_000n]);
+    await pool.write.setTotalAssets([123_456n * 2n]); // 1/2 to rebalance -> coefficient is 2/3
+    await pool.write.setEquilibriumAssets([400_000n]);
+    await pool.write.setRebalanceAssets([10_000n]);
 
-  //   const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
-  //     123_456n, // assets
-  //   ]);
-  //   expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
-  //   expect(rebalanceAssets).equal(-3_086n); // eq +400_000 -> +276_544, -3_086.4 floor
-  // });
+    const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
+      123_456n, // assets
+    ]);
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
+    expect(rebalanceAssets).equal(-6_666n); // eq +400_000 -> +276_544, -6_666.6 floor
+  });
 
-  // it('Should tune for assets at edge positive equilibrium', async function () {
-  //   const { tuner, pool } = await loadFixture(deployFixture);
+  it('Should tune for assets at edge positive equilibrium', async function () {
+    const { tuner, pool } = await loadFixture(deployFixture);
 
-  //   await pool.write.setEquilibriumAssets([123_456n]);
-  //   await pool.write.setRebalanceAssets([10_000n]);
+    await pool.write.setTotalAssets([123_456n]);
+    await pool.write.setEquilibriumAssets([123_456n]);
+    await pool.write.setRebalanceAssets([10_000n]);
 
-  //   const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
-  //     123_456n, // assets
-  //   ]);
-  //   expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
-  //   expect(rebalanceAssets).equal(-10_000n); // eq +123_456 -> 0, entire budget
-  // });
+    const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
+      123_456n, // assets
+    ]);
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
+    expect(rebalanceAssets).equal(-10_000n); // eq +123_456 -> 0, entire budget
+  });
 
-  // it('Should tune for assets crossing positive-negative border of equilibrium', async function () {
-  //   const { tuner, pool } = await loadFixture(deployFixture);
+  it('Should tune for assets crossing positive-negative border of equilibrium', async function () {
+    const { tuner, pool } = await loadFixture(deployFixture);
 
-  //   await pool.write.setEquilibriumAssets([88_000n]);
-  //   await pool.write.setRebalanceAssets([10_000n]);
+    await pool.write.setTotalAssets([88_000n]); // 1 to rebalance -> coefficient is 1
+    await pool.write.setEquilibriumAssets([88_000n]);
+    await pool.write.setRebalanceAssets([10_000n]);
 
-  //   const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
-  //     123_456n, // assets
-  //   ]);
-  //   expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
-  //   expect(rebalanceAssets).equal(-8_310n); // eq +88_000 -> 0 -> -35_456, entire budget, 1489.152 ceil + 200 fixed
-  // });
+    const [protocolAssets, rebalanceAssets] = await tuner.read.tune([
+      123_456n, // assets
+    ]);
+    expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
+    expect(rebalanceAssets).equal(-8_310n); // eq +88_000 -> 0 -> -35_456, entire budget, 1489.152 ceil + 200 fixed
+  });
 });

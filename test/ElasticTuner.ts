@@ -81,7 +81,7 @@ describe('ElasticTuner', function () {
   it('Should tune for assets at far positive equilibrium', async function () {
     const { tuner, pool } = await loadFixture(deployFixture);
 
-    await pool.write.setTotalAssets([123_456n * 2n]); // 1/2 to rebalance -> coefficient is 2/3
+    await pool.write.setTotalAssets([123_456n * 2n]); // 1/2 to rebalance -> coefficient is 1/2
     await pool.write.setEquilibriumAssets([400_000n]);
     await pool.write.setRebalanceAssets([10_000n]);
 
@@ -89,7 +89,7 @@ describe('ElasticTuner', function () {
       123_456n, // assets
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
-    expect(rebalanceAssets).equal(-6_666n); // eq +400_000 -> +276_544, -6_666.6 floor
+    expect(rebalanceAssets).equal(-5_000n); // eq +400_000 -> +276_544, -5_000.0 floor (1/2)
   });
 
   it('Should tune for assets at edge positive equilibrium', async function () {
@@ -141,7 +141,7 @@ describe('ElasticTuner', function () {
   it('Should tune for assets at far positive equilibrium with extra relief', async function () {
     const { tuner, pool } = await loadFixture(deployFixture);
 
-    await pool.write.setTotalAssets([123_456n * 2n]); // 1/2 + 1/4 relief = 3/4 to rebalance -> coefficient is ~0.857
+    await pool.write.setTotalAssets([123_456n * 2n]); // 1/2 + 1/4 relief = 3/4 to rebalance -> coefficient is 3/4
     await pool.write.setEquilibriumAssets([400_000n]);
     await pool.write.setRebalanceAssets([10_000n]);
 
@@ -150,7 +150,7 @@ describe('ElasticTuner', function () {
       123_456n / 2n, // relief (1/4)
     ]);
     expect(protocolAssets).equal(4_421n); // 4_320.96 ceil + 100 fixed
-    expect(rebalanceAssets).equal(-8_571n); // eq +400_000 -> +276_544, -8_571.4 floor
+    expect(rebalanceAssets).equal(-7_500n); // eq +400_000 -> +276_544, -7_500.0 floor (3/4)
   });
 
   it('Should tune for assets at far positive equilibrium with excessive extra relief', async function () {

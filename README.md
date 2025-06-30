@@ -721,25 +721,15 @@ above-zero equilibrium, the tuner subtracts amount from `rebalanceAssets` propor
 #### Elastic Tuner
 
 [`ElasticTuner`](contracts/tuner/elastic/ElasticTuner.sol) implementation of [tuner](#tuner). Similarly to the
-[`LinearTuner`](#linear-tuner), this contract accepts protocol & rebalance linear parameters. Additionally,
-`controller` parameter is accepted for managing _relievers_ - new concept to this variant.
+[`LinearTuner`](#linear-tuner), this contract accepts protocol & rebalance linear parameters. The `protocolAssets`
+calculation works exactly the same way as in _linear_ implementation, as well as the "charge % of `assets` for taking
+from pool when equilibrium reports insufficiency" part of `rebalanceAssets` calculation. The key difference is in
+`rebalanceAssets` handling when _relief_ is provided. Now the rebalance budget to use is calculated as proportion of
+the _relief_ assets to _total_ pool assets, instead of old _equilibrium_ difference.
 
-The `protocolAssets` calculation works exactly the same way as in _linear_ implementation, as well as the "charge % of
-`assets` for taking from pool when equilibrium reports insufficiency" part of `rebalanceAssets` calculation. The key
-difference is in `rebalanceAssets` handling when _relief_ is provided. Now the rebalance budget to use is calculated as
-proportion of the _relief_ assets to _total_ pool assets, instead of old _equilibrium_ difference. Additionally, special
-coefficient based on _reciprocal_ function is applied to motivate and compensate solvers when rebalancing lower amounts.
-The coefficient is calculated using $f(x) = 2 - \frac{2}{x + 1}$ function, where $x = relief / total$.
-
-> [!TIP]
->
-> _`ElasticTuner` coefficient function_
->
-> ![ElasticTuner coefficient function](data/images/elastic-func.svg)
-
-The tuner logic also includes an ability for whitelisted _relievers_ to specify _extra relief_ that has been provided
-by solver to pool besides the equilibrium change by _take_ operation. For example, bringing liquidity back to the pool
-when its equilibrium indicates deficiency - like in [`TransferReliefGiver`](#transfer) taker.
+The elastic tuner logic also includes an ability for whitelisted takers of its pool to specify _extra relief_ that has
+been provided by solver to pool besides the equilibrium change of the _take_ operation. For example, bringing liquidity
+back to the pool when its equilibrium indicates deficiency - like in [`TransferReliefGiver`](#transfer) taker.
 
 ### Taker
 

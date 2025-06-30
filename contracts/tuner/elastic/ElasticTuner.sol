@@ -57,7 +57,7 @@ contract ElasticTuner is IElasticTuner, LinearProtocolFossil, LinearRebalanceFos
             uint256 total = pool.totalAssets();
             if (total != 0) {
                 relief_ = Math.min(relief_, total);
-                rebalanceAssets -= int256(Math.mulDiv(pool.rebalanceAssets(), relief_ * 2, relief_ + total));
+                rebalanceAssets -= int256(Math.mulDiv(pool.rebalanceAssets(), relief_, total));
             }
         }
 

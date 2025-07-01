@@ -35,10 +35,10 @@
     "hardhat": "2.25.0",
     "hardhat-contract-sizer": "2.10.0",
     "hardhat-gas-reporter": "2.3.0",
-    "solhint": "5.1.0",
+    "solhint": "5.2.0",
     "solidity-coverage": "0.8.16",
     "ts-node": "10.9.2",
     "typescript": "5.8.3",
-    "viem": "2.31.4"
+    "viem": "2.31.6"
   }
 }

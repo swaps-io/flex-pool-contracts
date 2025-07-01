@@ -23,6 +23,7 @@ Smart contracts of Flex Pool protocol.
     - [Rebalance Assets](#rebalance-assets)
   - [Tuner](#tuner)
     - [Linear Tuner](#linear-tuner)
+    - [Elastic Tuner](#elastic-tuner)
   - [Taker](#taker)
     - [Transfer](#transfer)
     - [1inch Fusion+](#1inch-fusion)
@@ -691,7 +692,7 @@ interface that includes single `tune` view function.
 
 The `rebalanceFixed` and `rebalancePercent` are only applied to the part of the `assets` that is in below-zero pool
 [equilibrium](#equilibrium-assets). These assets will go to the [rebalance](#rebalance) reserve. For the part in
-above-zero equilibrium, the tuner subtracts amount from `rebalanceAssets` proportionally to the provided relieve.
+above-zero equilibrium, the tuner subtracts amount from `rebalanceAssets` proportionally to the provided relief.
 
 > [!TIP]
 >
@@ -710,12 +711,25 @@ above-zero equilibrium, the tuner subtracts amount from `rebalanceAssets` propor
 > - If equilibrium is `+300_000` (will become `-700_000` after):
 >   - assuming `pool` has `30_000` in rebalance reserve
 >   - `protocolAssets` = `20_000` (`10_000` + `1_000_000` * `1%`)
->   - `rebalanceAssets` = `-1_000` (`15_000` + `700_000` * `2%`, relieve: `30_000` * `300_000` / `300_000`)
+>   - `rebalanceAssets` = `-1_000` (`15_000` + `700_000` * `2%`, relief: `30_000` * `300_000` / `300_000`)
 >
 > - If equilibrium is `+2_500_000` (will become `+1_500_000` after):
 >   - assuming `pool` has `80_000` in rebalance reserve
 >   - `protocolAssets` = `20_000` (`10_000` + `1_000_000` * `1%`)
->   - `rebalanceAssets` = `-32_000` (relieve: `80_000` * `1_000_000` / `2_500_000`)
+>   - `rebalanceAssets` = `-32_000` (relief: `80_000` * `1_000_000` / `2_500_000`)
+
+#### Elastic Tuner
+
+[`ElasticTuner`](contracts/tuner/elastic/ElasticTuner.sol) implementation of [tuner](#tuner). Similarly to the
+[`LinearTuner`](#linear-tuner), this contract accepts protocol & rebalance linear parameters. The `protocolAssets`
+calculation works exactly the same way as in _linear_ implementation, as well as the "charge % of `assets` for taking
+from pool when equilibrium reports insufficiency" part of `rebalanceAssets` calculation. The key difference is in
+`rebalanceAssets` handling when _relief_ is provided. Now the rebalance budget to use is calculated as proportion of
+the _relief_ assets to _total_ pool assets, instead of old _equilibrium_ difference.
+
+The elastic tuner logic also includes an ability for whitelisted takers of its pool to specify _extra relief_ that has
+been provided by solver to pool besides the equilibrium change of the _take_ operation. For example, bringing liquidity
+back to the pool when its equilibrium indicates deficiency - like in [`TransferReliefGiver`](#transfer) taker.
 
 ### Taker
 
@@ -753,6 +767,14 @@ operation is performed via [`TransferGiver`](contracts/taker/transfer/TransferGi
 > Managing `nonce`s is `receiver`'s responsibility and should be done with _caution_. Sending asset via _two or more_
 > `give` (or `giveHold`) functions with _the same_ `takeChain`, `takeReceiver` and `takeNonce` params will result in
 > only _one_ take possible (since subsequent ones will be blocked after the record of a first one).
+
+_Relief Giver_
+
+There is another variant of `TransferGiver`: [`TransferReliefGiver`](contracts/taker/transfer/TransferReliefGiver.sol).
+It works similarly to the original one, except it's aware of its
+[`IExtraRelief`](contracts/tuner/util/relief/interfaces/IExtraRelief.sol)-capable [tuner](#tuner) (such as
+[`ElasticTuner`](#elastic-tuner)). After providing asset to pool, the giver collects _possible_ surplus assets for the
+[rebalance](#rebalance)-beneficial action and sends them back to the caller.
 
 #### 1inch Fusion+
 

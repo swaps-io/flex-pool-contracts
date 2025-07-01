@@ -28,6 +28,7 @@ const config: HardhatUserConfig = {
     strict: true,
     only: [
       'contracts/pool/FlexPool.sol',
+      'contracts/tuner/elastic/ElasticTuner.sol',
       'contracts/tuner/linear/LinearTuner.sol',
       'contracts/taker/across/AcrossDepositTaker.sol',
       'contracts/taker/across/AcrossFillTaker.sol',
@@ -35,6 +36,7 @@ const config: HardhatUserConfig = {
       'contracts/taker/fusion/FusionGiver.sol',
       'contracts/taker/fusion/FusionTaker.sol',
       'contracts/taker/transfer/TransferGiver.sol',
+      'contracts/taker/transfer/TransferReliefGiver.sol',
       'contracts/taker/transfer/TransferTaker.sol',
       'contracts/control/Controller.sol',
     ],

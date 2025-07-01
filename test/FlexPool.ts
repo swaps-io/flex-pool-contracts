@@ -19,7 +19,7 @@ describe('FlexPool', function () {
       'Pool Test Token', // name
       'PTT', // symbol
       18, // decimalsOffset
-      ownerClient.account.address, // initialOwner
+      ownerClient.account.address, // controller
     ]);
 
     const taker = await hre.viem.deployContract('TestTaker', [pool.address]);

@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.26;
 
+import {IBeacon} from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {PoolAware, IFlexPool} from "../../pool/aware/PoolAware.sol";
@@ -11,7 +12,6 @@ import {AssetRescuer} from "../../rescue/AssetRescuer.sol";
 import {Controllable} from "../../control/Controllable.sol";
 
 import {IProxyTaker} from "./interfaces/IProxyTaker.sol";
-import {IProxy} from "./interfaces/IProxy.sol";
 
 contract ProxyTaker is IProxyTaker, PoolAware, AssetRescuer, Controllable {
     mapping(address proxy => mapping(address implementation => bool)) public override implementationEnabled;
@@ -22,7 +22,7 @@ contract ProxyTaker is IProxyTaker, PoolAware, AssetRescuer, Controllable {
     {}
 
     modifier onlyProxy {
-        address implementation = IProxy(msg.sender).implementation();
+        address implementation = IBeacon(msg.sender).implementation();
         require(implementationEnabled[msg.sender][implementation], ImplementationDisabled(msg.sender, implementation));
         _;
     }

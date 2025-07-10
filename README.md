@@ -31,6 +31,7 @@ Smart contracts of Flex Pool protocol.
       - [Across Fill](#across-fill)
       - [Across Deposit](#across-deposit)
     - [CCTP](#cctp)
+    - [Proxy](#proxy)
   - [Verifier](#verifier)
 - [Development](#development)
   - [Stack](#stack)
@@ -857,6 +858,10 @@ fee) is automatically directed to the destination chain's pool (configured as re
 >
 > The solver who bridges the asset using CCTP taker benefits from the _surplus_ asset, provided by pool to the taker
 > contract and unspent during _burn_. This surplus is part of the pool's [rebalance](#rebalance) logic.
+
+#### Proxy
+
+[`ProxyTaker`](contracts/taker/proxy/ProxyTaker.sol) - TODO.
 
 ### Verifier
 

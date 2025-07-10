@@ -35,6 +35,7 @@ const config: HardhatUserConfig = {
       'contracts/taker/cctp/CctpTaker.sol',
       'contracts/taker/fusion/FusionGiver.sol',
       'contracts/taker/fusion/FusionTaker.sol',
+      'contracts/taker/proxy/ProxyTaker.sol',
       'contracts/taker/transfer/TransferGiver.sol',
       'contracts/taker/transfer/TransferReliefGiver.sol',
       'contracts/taker/transfer/TransferTaker.sol',

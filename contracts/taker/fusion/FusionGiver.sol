@@ -2,12 +2,14 @@
 
 pragma solidity ^0.8.26;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Address as AddressOZ} from "@openzeppelin/contracts/utils/Address.sol";
 
 import {IEscrowFactory, Timelocks} from "@1inch/cross-chain-swap/contracts/interfaces/IEscrowFactory.sol";
 import {IEscrowSrc} from "@1inch/cross-chain-swap/contracts/interfaces/IEscrowSrc.sol";
 import {IMerkleStorageInvalidator} from "@1inch/cross-chain-swap/contracts/interfaces/IMerkleStorageInvalidator.sol";
+import { ExtensionLib as ExtensionLibCC
+} from "@1inch/cross-chain-swap/lib/limit-order-settlement/contracts/extensions/ExtensionLib.sol";
 
 import {MakerTraitsLib} from "@1inch/limit-order-protocol/contracts/libraries/MakerTraitsLib.sol";
 import {TakerTraitsLib, TakerTraits} from "@1inch/limit-order-protocol/contracts/libraries/TakerTraitsLib.sol";
@@ -23,6 +25,7 @@ import {FusionBase, IFlexPool, IBaseEscrow} from "./FusionBase.sol";
 
 contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
     address public immutable override limitOrderProtocol;
+    address public immutable override accessToken;
     uint256 public immutable override minSafetyDeposit;
     uint256 public immutable override minPublicWithdrawTime;
     uint256 public immutable override maxPublicWithdrawTime;
@@ -32,6 +35,7 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         address controller_,
         address escrowFactory_,
         address limitOrderProtocol_,
+        address accessToken_,
         uint256 minSafetyDeposit_,
         uint256 minPublicWithdrawTime_,
         uint256 maxPublicWithdrawTime_
@@ -40,6 +44,7 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         AssetPermitter(poolAsset)
     {
         limitOrderProtocol = limitOrderProtocol_;
+        accessToken = accessToken_;
         minSafetyDeposit = minSafetyDeposit_;
         minPublicWithdrawTime = minPublicWithdrawTime_;
         maxPublicWithdrawTime = maxPublicWithdrawTime_;
@@ -110,6 +115,7 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         bytes32 secret_,
         IBaseEscrow.Immutables calldata immutables_
     ) public override
+        onlyOriginalTaker(escrow_)
         trackNative
         returnPoolAsset
     {
@@ -152,6 +158,7 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         IBaseEscrow.Immutables memory immutables = _extractEscrowSrcImmutables(order_, orderHash, makingAmount, data);
         _validateSrcImmutables(immutables);
 
+        _validateResolver(msg.sender, data[:_calcSuperArgsLength(data)]);
         _saveOriginalTaker(immutables, msg.sender);
     }
 
@@ -204,12 +211,15 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
         return _composeSrcImmutables(order_, orderHash_, makingAmount_, extraDataArgs, hashlock);
     }
 
+    function _calcSuperArgsLength(bytes calldata extraData_) private pure returns (uint256) {
+        return extraData_.length - 160; // SRC_IMMUTABLES_LENGTH
+    }
+
     function _extractExtraDataArgs(
         bytes calldata extraData_
     ) private pure returns (IEscrowFactory.ExtraDataArgs calldata extraDataArgs) {
         // Based on `BaseEscrowFactory._postInteraction` implementation
-        uint256 superArgsLength = extraData_.length - 160; // SRC_IMMUTABLES_LENGTH
-
+        uint256 superArgsLength = _calcSuperArgsLength(extraData_);
         assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
             extraDataArgs := add(extraData_.offset, superArgsLength)
         }
@@ -289,5 +299,46 @@ contract FusionGiver is IFusionGiver, FusionBase, AssetPermitter {
     function _validatePublicWithdrawTime(uint256 time_) private view {
         require(time_ >= minPublicWithdrawTime, InsufficientPublicWithdrawTime(time_, minPublicWithdrawTime));
         require(time_ <= maxPublicWithdrawTime, ExcessivePublicWithdrawTime(time_, maxPublicWithdrawTime));
+    }
+
+    function _validateResolver(address account_, bytes calldata extraData_) private view {
+        // Based on `ResolverValidationExtension._postInteraction` implementation
+        uint256 resolversCount = ExtensionLibCC.resolversCount(extraData_);
+        if (ExtensionLibCC.resolverFeeEnabled(extraData_)) {
+            extraData_ = extraData_[4:];
+        }
+
+        uint256 allowedTime = uint32(bytes4(extraData_[0:4]));
+        extraData_ = extraData_[4:];
+
+        if (!_isWhitelisted(allowedTime, extraData_[:resolversCount * 12], resolversCount, account_)) {
+            require(
+                allowedTime <= block.timestamp && IERC20(accessToken).balanceOf(account_) != 0,
+                ResolverNotAllowed(account_)
+            );
+        }
+    }
+
+    function _isWhitelisted(
+        uint256 allowedTime_,
+        bytes calldata whitelist_,
+        uint256 whitelistSize_,
+        address resolver_
+    ) internal view virtual returns (bool) {
+        // Copy of `ResolverValidationExtension._isWhitelisted`
+        unchecked {
+            uint80 maskedResolverAddress = uint80(uint160(resolver_));
+            for (uint256 i = 0; i < whitelistSize_; i++) {
+                uint80 whitelistedAddress = uint80(bytes10(whitelist_[:10]));
+                allowedTime_ += uint16(bytes2(whitelist_[10:12])); // add next time delta
+                if (maskedResolverAddress == whitelistedAddress) {
+                    return allowedTime_ <= block.timestamp;
+                } else if (allowedTime_ > block.timestamp) {
+                    return false;
+                }
+                whitelist_ = whitelist_[12:];
+            }
+            return false;
+        }
     }
 }

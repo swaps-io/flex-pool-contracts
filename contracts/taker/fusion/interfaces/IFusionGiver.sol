@@ -19,8 +19,11 @@ interface IFusionGiver is IFusionBase, IAssetPermitter {
     error InvalidTimelocksSequence(TimelocksLib.Stage stage, uint256 time, uint256 minTime);
     error InsufficientPublicWithdrawTime(uint256 time, uint256 minTime);
     error ExcessivePublicWithdrawTime(uint256 time, uint256 maxTime);
+    error ResolverNotAllowed(address resolver);
 
     function limitOrderProtocol() external view returns (address);
+
+    function accessToken() external view returns (address);
 
     function minSafetyDeposit() external view returns (uint256);
 

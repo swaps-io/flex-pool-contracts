@@ -94,6 +94,7 @@ contract FusionTaker is IFusionTaker, FusionBase, VerifierAware {
     }
 
     function cancelEscrow(address escrow_, IBaseEscrow.Immutables calldata immutables_) public override
+        onlyOriginalTaker(escrow_)
         trackNative
         returnPoolAsset
     {

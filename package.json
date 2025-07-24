@@ -11,7 +11,8 @@
     "tng": "yarn test --no-compile --grep",
     "tgn": "yarn test --no-compile --grep",
     "lint": "yarn solhint --noPoster --max-warnings 0 'contracts/**/*.sol'",
-    "l": "yarn lint"
+    "l": "yarn lint",
+    "c": "SOLIDITY_COVERAGE=true yarn hardhat coverage"
   },
   "dependencies": {
     "@1inch/cross-chain-swap": "link:./submodules/1inch/cross-chain-swap",
